@@ -1,416 +1,492 @@
 #!/usr/bin/env python3
 """
-FFmpeg 视频合成模块
-负责将静态图片转视频、拼接视频片段、合成完整PPT视频
+FFmpeg Video Composer Module.
+
+Responsible for converting static images to videos, concatenating video clips,
+and composing complete PPT videos.
 """
 
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
+
+# =============================================================================
+# Constants
+# =============================================================================
+
+DEFAULT_RESOLUTION = "1920x1080"
+DEFAULT_FPS = 24
+DEFAULT_SLIDE_DURATION = 2
+FFMPEG_TIMEOUT = 300  # 5 minutes
+
+
+# =============================================================================
+# Exceptions
+# =============================================================================
+
+class FFmpegError(Exception):
+    """Exception for FFmpeg-related errors."""
+    pass
+
+
+# =============================================================================
+# Video Composer
+# =============================================================================
 
 class VideoComposer:
-    """视频合成器"""
+    """FFmpeg-based video composer for PPT video generation."""
 
-    def __init__(self, ffmpeg_path: str = "ffmpeg"):
+    def __init__(self, ffmpeg_path: str = "ffmpeg") -> None:
         """
-        初始化合成器
+        Initialize video composer.
 
         Args:
-            ffmpeg_path: FFmpeg可执行文件路径
+            ffmpeg_path: Path to FFmpeg executable.
+
+        Raises:
+            FFmpegError: If FFmpeg is not available.
         """
         self.ffmpeg_path = ffmpeg_path
+        self._verify_ffmpeg()
 
-        # 检查FFmpeg是否可用
+    def _verify_ffmpeg(self) -> None:
+        """Verify FFmpeg is available and working."""
         try:
             result = subprocess.run(
-                [ffmpeg_path, "-version"],
+                [self.ffmpeg_path, "-version"],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
             if result.returncode == 0:
-                version_line = result.stdout.split('\n')[0]
-                print(f"✅ FFmpeg已就绪: {version_line}")
+                version = result.stdout.split("\n")[0]
+                print(f"FFmpeg ready: {version}")
             else:
-                raise Exception("FFmpeg版本检查失败")
-        except Exception as e:
-            raise Exception(
-                f"❌ FFmpeg不可用！\n"
-                f"请安装FFmpeg：brew install ffmpeg\n"
-                f"错误: {str(e)}"
+                raise FFmpegError("FFmpeg version check failed")
+        except FileNotFoundError:
+            raise FFmpegError(
+                "FFmpeg not found.\n"
+                "Please install FFmpeg: brew install ffmpeg"
             )
+        except subprocess.TimeoutExpired:
+            raise FFmpegError("FFmpeg version check timed out")
 
-    def _run_ffmpeg(self, cmd: List[str], description: str = "") -> bool:
+    # -------------------------------------------------------------------------
+    # FFmpeg Execution
+    # -------------------------------------------------------------------------
+
+    def _run_ffmpeg(
+        self,
+        cmd: List[str],
+        description: str = "",
+    ) -> bool:
         """
-        运行FFmpeg命令
+        Execute FFmpeg command.
 
         Args:
-            cmd: FFmpeg命令参数列表
-            description: 操作描述
+            cmd: FFmpeg command as list of arguments.
+            description: Operation description for logging.
 
         Returns:
-            success: 是否成功
+            True if successful, False otherwise.
         """
         if description:
-            print(f"🎬 {description}...")
+            print(f"  {description}...")
 
         try:
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=300  # 5分钟超时
+                timeout=FFMPEG_TIMEOUT,
             )
 
             if result.returncode != 0:
-                print(f"❌ FFmpeg执行失败:")
-                print(f"   命令: {' '.join(cmd)}")
-                print(f"   错误: {result.stderr}")
+                print(f"  FFmpeg failed: {result.stderr[:200]}")
                 return False
 
             if description:
-                print(f"✅ {description}完成")
-
+                print(f"  {description} complete")
             return True
 
         except subprocess.TimeoutExpired:
-            print(f"❌ FFmpeg执行超时")
+            print("  FFmpeg timed out")
             return False
         except Exception as e:
-            print(f"❌ FFmpeg执行异常: {str(e)}")
+            print(f"  FFmpeg error: {e}")
             return False
+
+    # -------------------------------------------------------------------------
+    # Static Video Creation
+    # -------------------------------------------------------------------------
 
     def create_static_video(
         self,
         image_path: str,
-        duration: int = 2,  # 改为2秒
+        duration: int = DEFAULT_SLIDE_DURATION,
         output_path: Optional[str] = None,
-        resolution: str = "1920x1080",  # 改为1080p以匹配可灵视频
-        fps: int = 24  # 改为24fps以匹配可灵视频
+        resolution: str = DEFAULT_RESOLUTION,
+        fps: int = DEFAULT_FPS,
     ) -> Optional[str]:
         """
-        将静态图片转换为视频（停留N秒）
+        Convert static image to video.
 
         Args:
-            image_path: 图片路径
-            duration: 停留时长（秒）
-            output_path: 输出视频路径（如不指定，自动生成）
-            resolution: 分辨率
-            fps: 帧率
+            image_path: Path to source image.
+            duration: Video duration in seconds.
+            output_path: Output video path (auto-generated if not provided).
+            resolution: Target resolution (WxH format).
+            fps: Target frame rate.
 
         Returns:
-            output_path: 输出视频路径，失败返回None
+            Path to output video, or None if failed.
         """
         if not os.path.exists(image_path):
-            print(f"❌ 图片不存在: {image_path}")
+            print(f"  Image not found: {image_path}")
             return None
 
-        # 自动生成输出路径
+        # Auto-generate output path
         if not output_path:
             stem = Path(image_path).stem
-            output_dir = Path(image_path).parent
-            output_path = str(output_dir / f"{stem}_static.mp4")
+            output_path = str(Path(image_path).parent / f"{stem}_static.mp4")
 
-        # 构建FFmpeg命令
-        # 分离宽和高
-        width, height = resolution.split('x')
+        width, height = resolution.split("x")
 
+        # Build FFmpeg command
         cmd = [
             self.ffmpeg_path,
-            "-y",  # 覆盖输出文件
-            "-loop", "1",  # 循环输入图片
-            "-i", image_path,  # 输入图片
-            "-c:v", "libx264",  # 使用H.264编码
-            "-t", str(duration),  # 时长
-            "-pix_fmt", "yuv420p",  # 像素格式（兼容性好）
-            "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1",  # 保持宽高比并添加黑边
-            "-r", str(fps),  # 帧率
-            output_path
+            "-y",  # Overwrite output
+            "-loop", "1",  # Loop input image
+            "-i", image_path,
+            "-c:v", "libx264",  # H.264 codec
+            "-t", str(duration),
+            "-pix_fmt", "yuv420p",
+            "-vf", (
+                f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+                f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1"
+            ),
+            "-r", str(fps),
+            output_path,
         ]
 
-        description = f"图片转视频 ({Path(image_path).name}, {duration}秒)"
+        description = f"Image to video ({Path(image_path).name}, {duration}s)"
         success = self._run_ffmpeg(cmd, description)
 
         return output_path if success else None
+
+    # -------------------------------------------------------------------------
+    # Video Concatenation
+    # -------------------------------------------------------------------------
 
     def concat_videos(
         self,
         video_list: List[str],
         output_path: str,
-        use_concat_protocol: bool = True,
-        normalize_params: bool = True,  # 新增：是否统一视频参数
-        target_resolution: str = "1920x1080",  # 目标分辨率
-        target_fps: int = 24  # 目标帧率
+        normalize_params: bool = True,
+        target_resolution: str = DEFAULT_RESOLUTION,
+        target_fps: int = DEFAULT_FPS,
     ) -> bool:
         """
-        拼接多个视频
+        Concatenate multiple videos into one.
 
         Args:
-            video_list: 视频路径列表（按顺序）
-            output_path: 输出路径
-            use_concat_protocol: 使用concat协议（更快，要求视频参数一致）
-            normalize_params: 是否统一视频参数（重新编码）
-            target_resolution: 目标分辨率
-            target_fps: 目标帧率
+            video_list: List of video paths in order.
+            output_path: Output video path.
+            normalize_params: Whether to normalize video parameters.
+            target_resolution: Target resolution for normalization.
+            target_fps: Target FPS for normalization.
 
         Returns:
-            success: 是否成功
+            True if successful, False otherwise.
         """
         if not video_list:
-            print("❌ 视频列表为空")
+            print("  Empty video list")
             return False
 
-        # 检查所有视频是否存在
+        # Verify all videos exist
         for video_path in video_list:
             if not os.path.exists(video_path):
-                print(f"❌ 视频不存在: {video_path}")
+                print(f"  Video not found: {video_path}")
                 return False
 
-        if use_concat_protocol and not normalize_params:
-            # 方法1: 使用concat demuxer（推荐，速度快，但要求参数一致）
-            # 创建临时文件列表
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-                concat_file = f.name
-                for video_path in video_list:
-                    # 转换为绝对路径
-                    abs_path = os.path.abspath(video_path)
-                    f.write(f"file '{abs_path}'\n")
-
-            try:
-                cmd = [
-                    self.ffmpeg_path,
-                    "-y",
-                    "-f", "concat",  # 使用concat demuxer
-                    "-safe", "0",  # 允许绝对路径
-                    "-i", concat_file,  # 输入文件列表
-                    "-c", "copy",  # 直接复制流（不重新编码，速度快）
-                    output_path
-                ]
-
-                description = f"拼接 {len(video_list)} 个视频（快速模式）"
-                success = self._run_ffmpeg(cmd, description)
-
-                return success
-
-            finally:
-                # 删除临时文件
-                if os.path.exists(concat_file):
-                    os.remove(concat_file)
-
+        if normalize_params:
+            return self._concat_with_filter(
+                video_list, output_path, target_resolution, target_fps
+            )
         else:
-            # 方法2: 使用concat filter（兼容性好，会重新编码）
-            # 构建filter_complex
-            inputs = []
-            for i, video_path in enumerate(video_list):
-                inputs.extend(["-i", video_path])
+            return self._concat_with_demuxer(video_list, output_path)
 
-            # 分离宽和高
-            width, height = target_resolution.split('x')
+    def _concat_with_demuxer(
+        self,
+        video_list: List[str],
+        output_path: str,
+    ) -> bool:
+        """
+        Concatenate videos using concat demuxer (fast, no re-encoding).
 
-            # 先缩放统一分辨率和帧率，再拼接
-            filter_parts = []
-            for i in range(len(video_list)):
-                filter_parts.append(
-                    f"[{i}:v]scale={width}:{height}:force_original_aspect_ratio=decrease,"
-                    f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,"
-                    f"fps={target_fps}[v{i}]"
-                )
+        Args:
+            video_list: List of video paths.
+            output_path: Output video path.
 
-            filters_normalize = ";".join(filter_parts)
-            concat_filter = "".join([f"[v{i}]" for i in range(len(video_list))])
-            concat_filter += f"concat=n={len(video_list)}:v=1:a=0[outv]"
+        Returns:
+            True if successful, False otherwise.
+        """
+        # Create temporary file list
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False
+        ) as f:
+            concat_file = f.name
+            for video_path in video_list:
+                f.write(f"file '{os.path.abspath(video_path)}'\n")
 
-            filter_complex = filters_normalize + ";" + concat_filter
-
+        try:
             cmd = [
                 self.ffmpeg_path,
-                "-y"
-            ] + inputs + [
-                "-filter_complex", filter_complex,
-                "-map", "[outv]",
-                "-c:v", "libx264",  # H.264编码
-                "-preset", "medium",  # 编码速度
-                "-crf", "23",  # 质量（18-28，越小质量越好）
-                "-pix_fmt", "yuv420p",
-                output_path
+                "-y",
+                "-f", "concat",
+                "-safe", "0",
+                "-i", concat_file,
+                "-c", "copy",
+                output_path,
             ]
 
-            description = f"拼接 {len(video_list)} 个视频（统一参数模式）"
-            success = self._run_ffmpeg(cmd, description)
+            description = f"Concatenating {len(video_list)} videos (fast mode)"
+            return self._run_ffmpeg(cmd, description)
+        finally:
+            if os.path.exists(concat_file):
+                os.remove(concat_file)
 
-            return success
+    def _concat_with_filter(
+        self,
+        video_list: List[str],
+        output_path: str,
+        resolution: str,
+        fps: int,
+    ) -> bool:
+        """
+        Concatenate videos using filter_complex (re-encodes, normalizes parameters).
+
+        Args:
+            video_list: List of video paths.
+            output_path: Output video path.
+            resolution: Target resolution.
+            fps: Target FPS.
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        width, height = resolution.split("x")
+
+        # Build input arguments
+        inputs = []
+        for video_path in video_list:
+            inputs.extend(["-i", video_path])
+
+        # Build filter for each input
+        filter_parts = []
+        for i in range(len(video_list)):
+            filter_parts.append(
+                f"[{i}:v]scale={width}:{height}:force_original_aspect_ratio=decrease,"
+                f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,"
+                f"fps={fps}[v{i}]"
+            )
+
+        # Build concat filter
+        concat_inputs = "".join(f"[v{i}]" for i in range(len(video_list)))
+        filter_complex = (
+            ";".join(filter_parts) + ";"
+            f"{concat_inputs}concat=n={len(video_list)}:v=1:a=0[outv]"
+        )
+
+        cmd = [
+            self.ffmpeg_path,
+            "-y",
+            *inputs,
+            "-filter_complex", filter_complex,
+            "-map", "[outv]",
+            "-c:v", "libx264",
+            "-preset", "medium",
+            "-crf", "23",
+            "-pix_fmt", "yuv420p",
+            output_path,
+        ]
+
+        description = f"Concatenating {len(video_list)} videos (normalized)"
+        return self._run_ffmpeg(cmd, description)
+
+    # -------------------------------------------------------------------------
+    # Full PPT Video Composition
+    # -------------------------------------------------------------------------
 
     def compose_full_ppt_video(
         self,
         slides_paths: List[str],
         transitions_dict: Dict[str, str],
         output_path: str,
-        slide_duration: int = 2,  # 改为2秒
+        slide_duration: int = DEFAULT_SLIDE_DURATION,
         include_preview: bool = False,
         preview_video_path: Optional[str] = None,
-        resolution: str = "1920x1080",  # 改为1080p
-        fps: int = 24  # 统一帧率24fps
+        resolution: str = DEFAULT_RESOLUTION,
+        fps: int = DEFAULT_FPS,
     ) -> bool:
         """
-        合成完整PPT视频
+        Compose complete PPT video from slides and transitions.
 
-        流程：
-        1. [可选] 预览视频
-        2. 切换视频1-2
-        3. 第2页静态（2秒）
-        4. 切换视频2-3
-        5. 第3页静态（2秒）
+        Video structure:
+        1. [Optional] Preview video
+        2. Transition 1-2
+        3. Slide 2 static (N seconds)
+        4. Transition 2-3
+        5. Slide 3 static (N seconds)
         ...
 
         Args:
-            slides_paths: PPT图片路径列表
-            transitions_dict: 过渡视频字典 {'1-2': 'path/to/video.mp4', ...}
-            output_path: 最终输出路径
-            slide_duration: 每页停留时长（秒）
-            include_preview: 是否包含预览视频
-            preview_video_path: 预览视频路径
-            resolution: 分辨率
-            fps: 帧率
+            slides_paths: List of slide image paths.
+            transitions_dict: Dict mapping 'from-to' keys to transition video paths.
+            output_path: Output video path.
+            slide_duration: Duration for each static slide.
+            include_preview: Whether to include preview video.
+            preview_video_path: Path to preview video.
+            resolution: Target resolution.
+            fps: Target FPS.
 
         Returns:
-            success: 是否成功
+            True if successful, False otherwise.
         """
-        print("\n" + "="*80)
-        print("🎬 合成完整PPT视频")
-        print("="*80)
+        print("\n" + "=" * 80)
+        print("Composing Full PPT Video")
+        print("=" * 80)
 
         num_slides = len(slides_paths)
-        print(f"\n📊 合成参数：")
-        print(f"   总页数: {num_slides}")
-        print(f"   每页停留: {slide_duration}秒")
-        print(f"   包含预览: {'是' if include_preview else '否'}")
-        print(f"   分辨率: {resolution}")
-        print(f"   帧率: {fps}fps\n")
+        print(f"\nParameters:")
+        print(f"  Slides: {num_slides}")
+        print(f"  Duration per slide: {slide_duration}s")
+        print(f"  Include preview: {'Yes' if include_preview else 'No'}")
+        print(f"  Resolution: {resolution}")
+        print(f"  FPS: {fps}\n")
 
-        # 创建临时目录存放静态视频
+        # Create temporary directory
         temp_dir = tempfile.mkdtemp(prefix="ppt_video_")
-        print(f"📁 临时目录: {temp_dir}\n")
+        print(f"Temp directory: {temp_dir}\n")
 
         try:
-            # 1. 生成所有静态视频（除了第一页）
-            print("📹 生成静态视频片段...")
+            # Generate static videos (skip first slide)
+            print("Generating static video clips...")
             static_videos = {}
 
-            for i in range(1, num_slides):  # 跳过第一页
+            for i in range(1, num_slides):
                 slide_path = slides_paths[i]
-                slide_num = Path(slide_path).stem.split('-')[-1]
+                slide_num = Path(slide_path).stem.split("-")[-1]
 
                 static_path = os.path.join(temp_dir, f"slide-{slide_num}-static.mp4")
-
                 result = self.create_static_video(
                     image_path=slide_path,
                     duration=slide_duration,
                     output_path=static_path,
                     resolution=resolution,
-                    fps=fps
+                    fps=fps,
                 )
 
                 if not result:
-                    print(f"❌ 第{slide_num}页静态视频生成失败")
+                    print(f"  Failed to create static video for slide {slide_num}")
                     return False
 
                 static_videos[slide_num] = static_path
 
-            print(f"✅ {len(static_videos)} 个静态视频生成完成\n")
+            print(f"  Generated {len(static_videos)} static videos\n")
 
-            # 2. 按顺序组装视频片段列表
-            print("📝 组装视频序列...")
+            # Build video sequence
+            print("Building video sequence...")
             video_sequence = []
 
-            # 可选：添加预览视频
+            # Optional preview
             if include_preview and preview_video_path and os.path.exists(preview_video_path):
                 video_sequence.append(preview_video_path)
-                print(f"   + 预览视频")
+                print("  + Preview video")
 
-            # 添加过渡和静态视频
+            # Add transitions and static videos
             for i in range(num_slides - 1):
-                from_num = Path(slides_paths[i]).stem.split('-')[-1]
-                to_num = Path(slides_paths[i+1]).stem.split('-')[-1]
+                from_num = Path(slides_paths[i]).stem.split("-")[-1]
+                to_num = Path(slides_paths[i + 1]).stem.split("-")[-1]
                 transition_key = f"{from_num}-{to_num}"
 
-                # 添加过渡视频
+                # Add transition video
                 if transition_key in transitions_dict:
                     transition_path = transitions_dict[transition_key]
                     if os.path.exists(transition_path):
                         video_sequence.append(transition_path)
-                        print(f"   + 过渡视频 {transition_key}")
+                        print(f"  + Transition {transition_key}")
                     else:
-                        print(f"   ⚠️  过渡视频缺失: {transition_key}")
+                        print(f"  ! Transition missing: {transition_key}")
                 else:
-                    print(f"   ⚠️  过渡视频未定义: {transition_key}")
+                    print(f"  ! Transition not defined: {transition_key}")
 
-                # 添加目标页静态视频
+                # Add target slide static video
                 if to_num in static_videos:
                     video_sequence.append(static_videos[to_num])
-                    print(f"   + 静态视频 slide-{to_num} ({slide_duration}秒)")
+                    print(f"  + Static slide-{to_num} ({slide_duration}s)")
 
-            print(f"\n📊 视频序列：共 {len(video_sequence)} 个片段\n")
+            print(f"\n  Total clips: {len(video_sequence)}\n")
 
-            # 3. 拼接所有视频
             if not video_sequence:
-                print("❌ 没有可拼接的视频片段")
+                print("  No video clips to concatenate")
                 return False
 
-            print("🔗 开始拼接视频...")
+            # Concatenate all videos
+            print("Concatenating videos...")
             success = self.concat_videos(
                 video_list=video_sequence,
                 output_path=output_path,
-                use_concat_protocol=True,
-                normalize_params=True,  # 启用参数统一
+                normalize_params=True,
                 target_resolution=resolution,
-                target_fps=fps
+                target_fps=fps,
             )
 
             if success:
-                file_size = os.path.getsize(output_path)
-                file_size_mb = file_size / (1024 * 1024)
-
-                print("\n" + "="*80)
-                print("✅ 完整PPT视频合成完成！")
-                print("="*80)
-                print(f"   输出路径: {output_path}")
-                print(f"   文件大小: {file_size_mb:.2f} MB")
-                print(f"   视频片段: {len(video_sequence)} 个")
-                print("="*80 + "\n")
+                file_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+                print("\n" + "=" * 80)
+                print("Full PPT Video Complete!")
+                print("=" * 80)
+                print(f"  Output: {output_path}")
+                print(f"  Size: {file_size_mb:.2f} MB")
+                print(f"  Clips: {len(video_sequence)}")
+                print("=" * 80 + "\n")
             else:
-                print("\n❌ 视频拼接失败")
+                print("\n  Video concatenation failed")
 
             return success
 
         finally:
-            # 清理临时文件
-            print(f"🧹 清理临时文件...")
-            import shutil
+            # Cleanup
+            print("Cleaning up temp files...")
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
-                print(f"✅ 临时目录已删除: {temp_dir}\n")
+                print(f"  Removed: {temp_dir}\n")
 
+
+# =============================================================================
+# Main (for testing)
+# =============================================================================
 
 if __name__ == "__main__":
-    """测试代码"""
-    # 初始化合成器
     composer = VideoComposer()
 
-    # 测试：图片转视频
+    # Test: Image to video
     test_image = "outputs/20260109_121822/images/slide-02.png"
     if os.path.exists(test_image):
-        print("\n测试1: 图片转静态视频")
+        print("\nTest: Image to static video")
         result = composer.create_static_video(
             image_path=test_image,
             duration=3,
-            output_path="test_outputs/test_static.mp4"
+            output_path="test_outputs/test_static.mp4",
         )
         if result:
-            print(f"✅ 测试1通过: {result}")
+            print(f"  Test passed: {result}")
         else:
-            print("❌ 测试1失败")
+            print("  Test failed")
     else:
-        print(f"跳过测试：测试图片不存在 {test_image}")
+        print(f"Skipping test: Image not found {test_image}")

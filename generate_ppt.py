@@ -1,314 +1,448 @@
 #!/usr/bin/env python3
 """
-PPT生成器
-使用Google Nano Banana Pro API基于文档内容生成PPT图片
+PPT Generator - Generate PPT slide images using Google Gemini API.
+
+This script generates PPT slide images based on a slide plan and style template,
+then creates an HTML viewer for playback.
 """
 
+import argparse
+import json
 import os
 import sys
-import json
-import argparse
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from dotenv import load_dotenv
 
 
-def find_and_load_env():
+# =============================================================================
+# Constants
+# =============================================================================
+
+DEFAULT_RESOLUTION = "2K"
+DEFAULT_TEMPLATE_PATH = "templates/viewer.html"
+OUTPUT_BASE_DIR = "outputs"
+
+# Style template markers
+TEMPLATE_START_MARKER = "## "
+TEMPLATE_END_MARKER = "## "
+
+
+# =============================================================================
+# Environment Configuration
+# =============================================================================
+
+def find_and_load_env() -> bool:
     """
-    智能查找并加载 .env 文件
-    优先级：
-    1. 当前脚本所在目录
-    2. 向上查找到项目根目录（包含 .git 或 .env 的目录）
-    3. 用户主目录下的 .claude/skills/ppt-generator/
+    Find and load .env file from multiple locations.
+
+    Search priority:
+    1. Current script directory
+    2. Parent directories up to project root (containing .git or .env)
+    3. Claude Code skill standard location (~/.claude/skills/ppt-generator/)
+
+    Returns:
+        True if .env file was found and loaded, False otherwise.
     """
     current_dir = Path(__file__).parent
+    env_locations = [
+        current_dir / ".env",
+        *[parent / ".env" for parent in current_dir.parents],
+        Path.home() / ".claude" / "skills" / "ppt-generator" / ".env",
+    ]
 
-    # 1. 尝试当前目录
-    if (current_dir / ".env").exists():
-        load_dotenv(current_dir / ".env", override=True)
-        print(f"✅ 已加载环境变量: {current_dir / '.env'}")
-        return True
-
-    # 2. 向上查找到项目根目录
-    for parent in current_dir.parents:
-        env_path = parent / ".env"
+    for env_path in env_locations:
         if env_path.exists():
             load_dotenv(env_path, override=True)
-            print(f"✅ 已加载环境变量: {env_path}")
+            print(f"Loaded environment from: {env_path}")
             return True
-        # 如果找到 .git 目录，说明到达项目根目录
-        if (parent / ".git").exists():
+
+        # Stop at project root if .git exists
+        if env_path.parent != current_dir and (env_path.parent / ".git").exists():
             break
 
-    # 3. 尝试 Claude Code Skill 标准位置
-    claude_skill_env = Path.home() / ".claude" / "skills" / "ppt-generator" / ".env"
-    if claude_skill_env.exists():
-        load_dotenv(claude_skill_env, override=True)
-        print(f"✅ 已加载环境变量: {claude_skill_env}")
-        return True
-
-    # 如果都没找到，尝试默认加载（可能从系统环境变量获取）
+    # Fallback: try default loading from system environment
     load_dotenv(override=True)
-    print("⚠️  未找到 .env 文件，尝试使用系统环境变量")
+    print("Warning: No .env file found, using system environment variables")
     return False
 
 
-# 智能加载环境变量
-find_and_load_env()
+# =============================================================================
+# Style Template
+# =============================================================================
 
+def load_style_template(style_path: str) -> str:
+    """
+    Load and parse style template file.
 
-def load_style_template(style_path):
-    """加载风格模板"""
-    with open(style_path, 'r', encoding='utf-8') as f:
+    Args:
+        style_path: Path to the style template markdown file.
+
+    Returns:
+        Extracted base prompt template string.
+    """
+    with open(style_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # 提取基础提示词模板部分
-    start_marker = "## 基础提示词模板"
-    end_marker = "## 页面类型模板"
+    # Extract base prompt template section
+    start_marker = "## "
+    end_marker = "## "
 
     start_idx = content.find(start_marker)
-    end_idx = content.find(end_marker)
+    end_idx = content.find(end_marker, start_idx + len(start_marker))
 
     if start_idx == -1 or end_idx == -1:
-        print("警告: 无法解析风格模板，使用完整文件内容")
+        print("Warning: Could not parse style template, using full content")
         return content
 
-    template = content[start_idx + len(start_marker):end_idx].strip()
-    return template
+    return content[start_idx + len(start_marker):end_idx].strip()
 
 
-def generate_prompt(style_template, page_type, content_text, slide_number, total_slides):
-    """生成单页提示词"""
-    prompt = f"{style_template}\n\n"
+# =============================================================================
+# Prompt Generation
+# =============================================================================
 
-    if page_type == "cover" or slide_number == 1:
-        # 封面页
-        prompt += f"""请根据视觉平衡美学，生成封面页。在中心放置一个巨大的复杂3D玻璃物体，并覆盖粗体大字：
+def generate_prompt(
+    style_template: str,
+    page_type: str,
+    content_text: str,
+    slide_number: int,
+    total_slides: int,
+) -> str:
+    """
+    Generate a prompt for a single slide.
+
+    Args:
+        style_template: Base style template text.
+        page_type: Type of page (cover, data, content).
+        content_text: Text content for the slide.
+        slide_number: Current slide number (1-indexed).
+        total_slides: Total number of slides.
+
+    Returns:
+        Complete prompt string for image generation.
+    """
+    prompt_parts = [style_template, "\n\n"]
+
+    # Determine page type based on slide position or explicit type
+    is_cover = page_type == "cover" or slide_number == 1
+    is_data = page_type == "data" or slide_number == total_slides
+
+    if is_cover:
+        prompt_parts.append(
+            f"""Please generate a cover page based on visual balance aesthetics.
+Place a large complex 3D glass object in the center, overlaid with bold text:
 
 {content_text}
 
-背景有延伸的极光波浪。"""
-
-    elif page_type == "data" or slide_number == total_slides:
-        # 数据页/总结页
-        prompt += f"""请生成数据页或总结页。使用分屏设计，左侧排版以下文字，右侧悬浮巨大的发光3D数据可视化图表：
+Background with extended aurora waves."""
+        )
+    elif is_data:
+        prompt_parts.append(
+            f"""Please generate a data/summary page using split-screen design.
+Left side: typeset the following text.
+Right side: floating large glowing 3D data visualization:
 
 {content_text}"""
-
+        )
     else:
-        # 内容页
-        prompt += f"""请生成内容页。使用Bento网格布局，将以下内容组织在模块化的圆角矩形容器中，容器材质必须是带有模糊效果的磨砂玻璃：
+        prompt_parts.append(
+            f"""Please generate a content page using Bento grid layout.
+Organize the following content in modular rounded rectangle containers.
+Container material must be frosted glass with blur effect:
 
 {content_text}"""
+        )
 
-    return prompt
+    return "".join(prompt_parts)
 
 
-def generate_slide(prompt, slide_number, output_dir, resolution="2K"):
-    """生成单页PPT图片（使用Nano Banana API）"""
+# =============================================================================
+# Image Generation
+# =============================================================================
+
+def get_gemini_client():
+    """
+    Initialize and return Gemini API client.
+
+    Returns:
+        Configured genai.Client instance.
+
+    Raises:
+        SystemExit: If google-genai is not installed or API key is missing.
+    """
     try:
         from google import genai
-        from google.genai import types
     except ImportError:
-        print("错误: 未安装 google-genai 库")
-        print("请运行: pip install google-genai")
+        print("Error: google-genai library not installed")
+        print("Please run: pip install google-genai")
         sys.exit(1)
 
-    # 获取API密钥
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        print("错误: 未设置 GEMINI_API_KEY 环境变量")
-        print("请设置: export GEMINI_API_KEY='your-api-key'")
+        print("Error: GEMINI_API_KEY environment variable not set")
+        print("Please set: export GEMINI_API_KEY='your-api-key'")
         sys.exit(1)
 
-    print(f"正在生成第 {slide_number} 页...")
+    return genai.Client(api_key=api_key)
+
+
+def generate_slide(
+    prompt: str,
+    slide_number: int,
+    output_dir: str,
+    resolution: str = DEFAULT_RESOLUTION,
+) -> Optional[str]:
+    """
+    Generate a single PPT slide image using Gemini API.
+
+    Args:
+        prompt: The generation prompt.
+        slide_number: Slide number for filename.
+        output_dir: Output directory path.
+        resolution: Image resolution (2K or 4K).
+
+    Returns:
+        Path to saved image, or None if generation failed.
+    """
+    from google.genai import types
+
+    print(f"Generating slide {slide_number}...")
 
     try:
-        client = genai.Client(api_key=api_key)
-
+        client = get_gemini_client()
         response = client.models.generate_content(
             model="gemini-3-pro-image-preview",
             contents=prompt,
             config=types.GenerateContentConfig(
-                response_modalities=['IMAGE'],
+                response_modalities=["IMAGE"],
                 image_config=types.ImageConfig(
                     aspect_ratio="16:9",
-                    image_size=resolution
-                )
-            )
+                    image_size=resolution,
+                ),
+            ),
         )
 
         for part in response.parts:
             if part.inline_data is not None:
                 image = part.as_image()
-                image_path = os.path.join(output_dir, "images", f"slide-{slide_number:02d}.png")
+                image_path = os.path.join(
+                    output_dir, "images", f"slide-{slide_number:02d}.png"
+                )
                 image.save(image_path)
-                print(f"✓ 第 {slide_number} 页已保存: {image_path}")
+                print(f"  Slide {slide_number} saved: {image_path}")
                 return image_path
 
-        print(f"✗ 第 {slide_number} 页生成失败: 未收到图片数据")
+        print(f"  Slide {slide_number} failed: No image data received")
         return None
 
     except Exception as e:
-        print(f"✗ 第 {slide_number} 页生成失败: {e}")
+        print(f"  Slide {slide_number} failed: {e}")
         return None
 
 
-def generate_viewer_html(output_dir, slide_count, template_path):
-    """生成播放网页"""
-    # 读取HTML模板
-    with open(template_path, 'r', encoding='utf-8') as f:
+# =============================================================================
+# Output Generation
+# =============================================================================
+
+def generate_viewer_html(
+    output_dir: str,
+    slide_count: int,
+    template_path: str,
+) -> str:
+    """
+    Generate HTML viewer for slides playback.
+
+    Args:
+        output_dir: Output directory path.
+        slide_count: Total number of slides.
+        template_path: Path to HTML template.
+
+    Returns:
+        Path to generated HTML file.
+    """
+    with open(template_path, "r", encoding="utf-8") as f:
         html_template = f.read()
 
-    # 生成图片列表
+    # Generate image list
     slides_list = [f"'images/slide-{i:02d}.png'" for i in range(1, slide_count + 1)]
 
-    # 替换占位符
+    # Replace placeholder
     html_content = html_template.replace(
         "/* IMAGE_LIST_PLACEHOLDER */",
-        ",\n            ".join(slides_list)
+        ",\n            ".join(slides_list),
     )
 
-    # 保存HTML文件
     html_path = os.path.join(output_dir, "index.html")
-    with open(html_path, 'w', encoding='utf-8') as f:
+    with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    print(f"✓ 播放网页已生成: {html_path}")
+    print(f"  Viewer HTML generated: {html_path}")
     return html_path
 
 
-def save_prompts(output_dir, prompts_data):
-    """保存所有提示词到JSON文件"""
+def save_prompts(output_dir: str, prompts_data: Dict[str, Any]) -> str:
+    """
+    Save all prompts to JSON file.
+
+    Args:
+        output_dir: Output directory path.
+        prompts_data: Dictionary containing all prompts and metadata.
+
+    Returns:
+        Path to saved JSON file.
+    """
     prompts_path = os.path.join(output_dir, "prompts.json")
-    with open(prompts_path, 'w', encoding='utf-8') as f:
+    with open(prompts_path, "w", encoding="utf-8") as f:
         json.dump(prompts_data, f, ensure_ascii=False, indent=2)
-    print(f"✓ 提示词已保存: {prompts_path}")
+    print(f"  Prompts saved: {prompts_path}")
+    return prompts_path
 
 
-def main():
+# =============================================================================
+# Main Entry Point
+# =============================================================================
+
+def create_argument_parser() -> argparse.ArgumentParser:
+    """Create and configure argument parser."""
     parser = argparse.ArgumentParser(
-        description='PPT生成器 - 使用Nano Banana Pro生成PPT图片',
+        description="PPT Generator - Generate PPT images using Gemini API",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-示例用法:
+Example usage:
   python generate_ppt.py --plan slides_plan.json --style styles/gradient-glass.md --resolution 2K
 
-环境变量:
-  GEMINI_API_KEY: Google AI API密钥（必需）
-"""
+Environment variables:
+  GEMINI_API_KEY: Google AI API key (required)
+""",
     )
 
     parser.add_argument(
-        '--plan',
+        "--plan",
         required=True,
-        help='slides规划JSON文件路径（由Skill生成）'
+        help="Path to slides plan JSON file (generated by Skill)",
     )
     parser.add_argument(
-        '--style',
+        "--style",
         required=True,
-        help='风格模板文件路径'
+        help="Path to style template file",
     )
     parser.add_argument(
-        '--resolution',
-        choices=['2K', '4K'],
-        default='2K',
-        help='图片分辨率 (默认: 2K)'
+        "--resolution",
+        choices=["2K", "4K"],
+        default=DEFAULT_RESOLUTION,
+        help=f"Image resolution (default: {DEFAULT_RESOLUTION})",
     )
     parser.add_argument(
-        '--output',
-        help='输出目录路径（默认: outputs/TIMESTAMP）'
+        "--output",
+        help="Output directory path (default: outputs/TIMESTAMP)",
     )
     parser.add_argument(
-        '--template',
-        default='templates/viewer.html',
-        help='HTML模板路径（默认: templates/viewer.html）'
+        "--template",
+        default=DEFAULT_TEMPLATE_PATH,
+        help=f"HTML template path (default: {DEFAULT_TEMPLATE_PATH})",
     )
 
+    return parser
+
+
+def main() -> None:
+    """Main entry point for PPT generation."""
+    # Load environment variables
+    find_and_load_env()
+
+    # Parse arguments
+    parser = create_argument_parser()
     args = parser.parse_args()
 
-    # 读取slides规划
-    with open(args.plan, 'r', encoding='utf-8') as f:
+    # Load slides plan
+    with open(args.plan, "r", encoding="utf-8") as f:
         slides_plan = json.load(f)
 
-    # 加载风格模板
+    # Load style template
     style_template = load_style_template(args.style)
 
-    # 创建输出目录
+    # Create output directory
     if args.output:
         output_dir = args.output
     else:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_dir = f"outputs/{timestamp}"
+        output_dir = f"{OUTPUT_BASE_DIR}/{timestamp}"
 
     os.makedirs(os.path.join(output_dir, "images"), exist_ok=True)
 
+    # Print configuration
+    slides = slides_plan["slides"]
+    total_slides = len(slides)
+
     print("=" * 60)
-    print("PPT生成器启动")
+    print("PPT Generator Started")
     print("=" * 60)
-    print(f"风格: {args.style}")
-    print(f"分辨率: {args.resolution}")
-    print(f"页数: {len(slides_plan['slides'])}")
-    print(f"输出目录: {output_dir}")
+    print(f"Style: {args.style}")
+    print(f"Resolution: {args.resolution}")
+    print(f"Slides: {total_slides}")
+    print(f"Output: {output_dir}")
     print("=" * 60)
     print()
 
-    # 生成每一页
-    prompts_data = {
+    # Initialize prompts data
+    prompts_data: Dict[str, Any] = {
         "metadata": {
-            "title": slides_plan.get("title", "未命名演示"),
-            "total_slides": len(slides_plan['slides']),
+            "title": slides_plan.get("title", "Untitled Presentation"),
+            "total_slides": total_slides,
             "resolution": args.resolution,
             "style": args.style,
-            "generated_at": datetime.now().isoformat()
+            "generated_at": datetime.now().isoformat(),
         },
-        "slides": []
+        "slides": [],
     }
 
-    total_slides = len(slides_plan['slides'])
+    # Generate each slide
+    for slide_info in slides:
+        slide_number = slide_info["slide_number"]
+        page_type = slide_info.get("page_type", "content")
+        content_text = slide_info["content"]
 
-    for slide_info in slides_plan['slides']:
-        slide_number = slide_info['slide_number']
-        page_type = slide_info.get('page_type', 'content')
-        content_text = slide_info['content']
-
-        # 生成提示词
+        # Generate prompt
         prompt = generate_prompt(
             style_template,
             page_type,
             content_text,
             slide_number,
-            total_slides
+            total_slides,
         )
 
-        # 生成图片
+        # Generate image
         image_path = generate_slide(prompt, slide_number, output_dir, args.resolution)
 
-        # 记录提示词
-        prompts_data['slides'].append({
+        # Record prompt data
+        prompts_data["slides"].append({
             "slide_number": slide_number,
             "page_type": page_type,
             "content": content_text,
             "prompt": prompt,
-            "image_path": image_path
+            "image_path": image_path,
         })
 
         print()
 
-    # 保存提示词
+    # Save prompts
     save_prompts(output_dir, prompts_data)
 
-    # 生成播放网页
+    # Generate viewer HTML
     generate_viewer_html(output_dir, total_slides, args.template)
 
+    # Print completion summary
     print()
     print("=" * 60)
-    print("生成完成！")
+    print("Generation Complete!")
     print("=" * 60)
-    print(f"输出目录: {output_dir}")
-    print(f"播放网页: {os.path.join(output_dir, 'index.html')}")
+    print(f"Output directory: {output_dir}")
+    print(f"Viewer HTML: {os.path.join(output_dir, 'index.html')}")
     print()
-    print("打开播放网页查看PPT:")
+    print("Open viewer in browser:")
     print(f"  open {os.path.join(output_dir, 'index.html')}")
     print()
 

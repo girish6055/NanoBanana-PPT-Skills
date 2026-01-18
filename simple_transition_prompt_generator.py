@@ -1,99 +1,105 @@
 #!/usr/bin/env python3
 """
-简化版转场提示词生成器
-使用通用模板，不依赖 Claude API
+Simple Transition Prompt Generator.
+
+Provides generic transition prompts without requiring Claude API.
+Useful for testing or when Claude API is not available.
 """
 
-import os
 from pathlib import Path
 from typing import Optional
 
 
-class SimpleTransitionPromptGenerator:
-    """简化版转场提示词生成器"""
+# =============================================================================
+# Default Prompts
+# =============================================================================
 
-    def __init__(self):
-        """初始化生成器"""
-        print(f"✅ 简化版提示词生成器初始化完成")
+DEFAULT_TRANSITION_PROMPT = """The camera starts from the initial page, with background aurora waves flowing slowly from left to right. Neon purple, electric blue, and coral orange gradients shift gently against the dark background. The 3D glass object in the center begins to deconstruct, splitting into multiple transparent glass fragments that elegantly rotate and float in the air, reflecting the surrounding neon lights.
+
+During deconstruction, the main elements of the starting page gradually disappear through fade-out, while new elements of the target page slowly emerge from transparency. If there are frosted glass rounded rectangle cards, they slide in from the edge or expand from the center, with subtle blur effects and reflections on their surfaces.
+
+On the right side or other areas, glass fragments reassemble and weave into new 3D glass structures or data visualization graphics. These new elements are progressively assembled, each part maintaining the glass-morphic texture. If there are data labels or text information, they appear through simple fade-in, with text content remaining absolutely clear and stable throughout, without any distortion, blur, or shaking.
+
+The aurora waves continue flowing throughout the transition, colors smoothly transitioning from the starting page's main tones to the target page's color scheme. Deep blue, purple, and coral gradients remain soft and coherent, creating a smooth, premium, tech-forward visual atmosphere. At the end, all elements stabilize in their final state, text is clear and readable, and glass objects are fully rendered."""
+
+DEFAULT_PREVIEW_PROMPT = """The PPT cover composition remains static, with background aurora waves flowing extremely slowly from left to right. Neon purple, electric blue, and coral orange gradients breathe with subtle changes, completing a gentle brightness cycle over 5 seconds.
+
+The central 3D glass object maintains its main form, but its surface reflections flow slowly, with glass material highlights shimmering like water waves, creating a subtle breathing sensation. If there are frosted glass cards, their edge glow intensity fluctuates subtly between 0.8 and 1.0.
+
+Deep in the background, a few small light points may slowly drift in the darkness, like cosmic stardust. The overall brightness varies extremely subtly between 95% and 105% of normal value. All text content remains absolutely clear and stable, without any movement, distortion, or blur, always clearly readable.
+
+This is a seamlessly looping subtle animation, where the last frame and first frame connect perfectly. The flow of light effects and color changes form a natural loop, giving a sense of serenity, premium quality, and waiting for interaction."""
+
+
+# =============================================================================
+# Simple Transition Prompt Generator
+# =============================================================================
+
+class SimpleTransitionPromptGenerator:
+    """Simple prompt generator using generic templates."""
+
+    def __init__(self) -> None:
+        """Initialize simple prompt generator."""
+        print("Simple prompt generator initialized")
 
     def generate_prompt(
         self,
         frame_start_path: str,
         frame_end_path: str,
-        content_context: Optional[str] = None
+        content_context: Optional[str] = None,
     ) -> str:
         """
-        生成通用转场提示词
+        Generate generic transition prompt.
 
         Args:
-            frame_start_path: 起始帧图片路径
-            frame_end_path: 结束帧图片路径
-            content_context: 内容上下文（可选）
+            frame_start_path: Path to start frame image.
+            frame_end_path: Path to end frame image.
+            content_context: Ignored (for interface compatibility).
 
         Returns:
-            prompt: 转场描述文本
+            Generic transition prompt text.
         """
-        print(f"\n🎬 生成转场提示词...")
-        print(f"   起始帧: {Path(frame_start_path).name}")
-        print(f"   结束帧: {Path(frame_end_path).name}")
+        print(f"\nGenerating transition prompt...")
+        print(f"  Start: {Path(frame_start_path).name}")
+        print(f"  End: {Path(frame_end_path).name}")
 
-        # 使用通用的渐变毛玻璃风格转场模板
-        prompt = """镜头从起始页面开始，背景的极光波浪从左向右缓慢流动，霓虹紫、电光蓝和珊瑚橙的渐变色彩在深色背景上轻柔变化。画面中心的3D玻璃物体开始逐渐解构，分裂成多个透明的玻璃碎片，这些碎片在空中优雅地旋转、飘散，同时反射着周围的霓虹光芒。
+        print("  Using generic transition template")
+        print(f"\n{'=' * 60}")
+        print(DEFAULT_TRANSITION_PROMPT)
+        print(f"{'=' * 60}\n")
 
-在解构过程中，起始页面的主要元素通过淡出方式逐渐消失，而目标页面的新元素从透明状态慢慢浮现。如果有磨砂玻璃材质的圆角矩形卡片，它们从画面边缘滑入或从中心扩散出现，表面带有微妙的模糊效果和反光。
-
-画面右侧或其他区域的玻璃碎片重新聚合，编织成新的3D玻璃结构或数据可视化图形，这些新元素通过渐进的方式组装完成，每个部分都保持玻璃拟态的质感。如果有数据标签或文字信息，它们通过简单的淡入方式出现，文字内容在整个过程中保持绝对清晰稳定，没有任何变形、模糊或晃动。
-
-背景的极光波浪在整个转场过程中持续流动，色彩从起始页面的主色调平滑过渡到目标页面的配色方案。深蓝、紫色和珊瑚色的渐变始终保持柔和、连贯，为整个转场营造出流畅、高端、科技感的视觉氛围。转场结束时，所有元素稳定停留在最终状态，文字清晰可读，玻璃物体完整呈现。"""
-
-        print(f"✅ 转场提示词生成完成！")
-        print(f"\n转场描述：")
-        print(f"{'='*60}")
-        print(prompt)
-        print(f"{'='*60}\n")
-
-        return prompt
+        return DEFAULT_TRANSITION_PROMPT
 
     def generate_preview_prompt(self, first_slide_path: str) -> str:
         """
-        生成首页预览视频的提示词
+        Generate generic preview prompt.
 
         Args:
-            first_slide_path: 首页图片路径
+            first_slide_path: Path to first slide image.
 
         Returns:
-            prompt: 预览视频提示词
+            Generic preview prompt text.
         """
-        print(f"\n🎬 生成首页预览提示词...")
-        print(f"   首页: {Path(first_slide_path).name}")
+        print(f"\nGenerating preview prompt...")
+        print(f"  Slide: {Path(first_slide_path).name}")
 
-        # 使用通用的预览微动效模板
-        prompt = """画面保持静止的PPT封面构图，背景的极光波浪以极其缓慢的速度从左向右流动，霓虹紫、电光蓝和珊瑚橙的渐变色彩如呼吸般轻微变化，色调在5秒内完成一个柔和的明暗循环。
+        print("  Using generic preview template")
 
-中心的3D玻璃物体保持主体形态不变，但其表面反射的光芒在缓慢地流动，玻璃材质的高光点像水波般轻微闪烁，营造出微妙的呼吸感。如果有磨砂玻璃卡片，其边缘的光晕强度在0.8到1.0倍之间细微波动。
-
-背景深处可能有几个小光点在黑暗中缓慢飘移，如同宇宙中的星尘。整体画面的亮度在正常值的95%到105%之间做极轻微的呼吸式变化。所有文字内容保持绝对清晰稳定，没有任何移动、变形或模糊，始终清晰可读。
-
-这是一个可无缝循环的微动效，视频的最后一帧和第一帧完美衔接，光效的流动和色彩的变化形成自然的循环，给人以静谧、高端、等待交互的感觉。"""
-
-        print(f"✅ 预览提示词生成完成！")
-
-        return prompt
+        return DEFAULT_PREVIEW_PROMPT
 
 
 if __name__ == "__main__":
-    """测试代码"""
+    import os
+
     generator = SimpleTransitionPromptGenerator()
 
-    # 测试转场提示词
     test_start = "outputs/20260112_012753/images/slide-01.png"
     test_end = "outputs/20260112_012753/images/slide-02.png"
 
     if os.path.exists(test_start) and os.path.exists(test_end):
         prompt = generator.generate_prompt(test_start, test_end)
-        print(f"\n生成的提示词长度: {len(prompt)} 字符")
+        print(f"\nGenerated prompt length: {len(prompt)} characters")
 
-    # 测试预览提示词
     if os.path.exists(test_start):
         preview_prompt = generator.generate_preview_prompt(test_start)
-        print(f"\n生成的预览提示词长度: {len(preview_prompt)} 字符")
+        print(f"\nGenerated preview prompt length: {len(preview_prompt)} characters")

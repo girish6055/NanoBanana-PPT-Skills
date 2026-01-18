@@ -1,269 +1,320 @@
 #!/usr/bin/env python3
 """
-PPT视频生成主流程脚本
-整合图片生成、视频素材生成、视频合成功能
+PPT Video Generator - Generate videos with transitions from PPT slide images.
+
+This script integrates image processing, video material generation, and video
+composition to create complete PPT presentation videos.
 """
 
+import argparse
+import json
 import os
 import sys
-import json
-import argparse
+import traceback
 from pathlib import Path
-from datetime import datetime
-from typing import List, Dict, Optional
+from typing import Any, Dict, List, Optional
+
 from dotenv import load_dotenv
 
-# 加载环境变量
-load_dotenv()
-
-# 导入模块
-from video_materials import VideoMaterialsGenerator
 from video_composer import VideoComposer
+from video_materials import VideoMaterialsGenerator
+
+
+# =============================================================================
+# Constants
+# =============================================================================
+
+DEFAULT_VIDEO_MODE = "both"
+DEFAULT_VIDEO_DURATION = "5"
+DEFAULT_SLIDE_DURATION = 5
+DEFAULT_VIDEO_QUALITY = "pro"
+DEFAULT_MAX_CONCURRENT = 3
+
+
+# =============================================================================
+# Video Generation
+# =============================================================================
+
+def scan_slide_images(slides_dir: str) -> List[str]:
+    """
+    Scan directory for PPT slide images.
+
+    Args:
+        slides_dir: Directory containing slide images.
+
+    Returns:
+        Sorted list of slide image paths.
+
+    Raises:
+        FileNotFoundError: If no slide images are found.
+    """
+    slides_paths = sorted(Path(slides_dir).glob("slide-*.png"))
+
+    if not slides_paths:
+        raise FileNotFoundError(
+            f"No PPT images found in {slides_dir} (expected format: slide-*.png)"
+        )
+
+    return [str(p) for p in slides_paths]
+
+
+def create_output_directories(output_dir: str) -> str:
+    """
+    Create output directory structure.
+
+    Args:
+        output_dir: Base output directory.
+
+    Returns:
+        Path to videos subdirectory.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    videos_dir = os.path.join(output_dir, "videos")
+    os.makedirs(videos_dir, exist_ok=True)
+    return videos_dir
 
 
 def generate_ppt_video_from_images(
     slides_dir: str,
     output_dir: str,
-    video_mode: str = "both",
-    video_duration: str = "5",
-    slide_duration: int = 5,
-    video_quality: str = "pro",
-    max_concurrent: int = 3,
+    video_mode: str = DEFAULT_VIDEO_MODE,
+    video_duration: str = DEFAULT_VIDEO_DURATION,
+    slide_duration: int = DEFAULT_SLIDE_DURATION,
+    video_quality: str = DEFAULT_VIDEO_QUALITY,
+    max_concurrent: int = DEFAULT_MAX_CONCURRENT,
     skip_preview: bool = False,
-    prompts_file: Optional[str] = None  # 新增：提示词文件路径
-):
+    prompts_file: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
     """
-    从已有的PPT图片生成视频
+    Generate video from existing PPT images.
 
     Args:
-        slides_dir: PPT图片目录
-        output_dir: 输出目录
-        video_mode: 输出模式 - both（本地视频+网页）/ local（仅本地）/ web（仅网页）
-        video_duration: 过渡视频时长（5或10秒）
-        slide_duration: 每页停留时长
-        video_quality: 视频质量（std/pro）
-        max_concurrent: 最大并发数
-        skip_preview: 是否跳过预览视频
+        slides_dir: Directory containing PPT slide images.
+        output_dir: Output directory for generated videos.
+        video_mode: Output mode - both/local/web.
+        video_duration: Transition video duration (5 or 10 seconds).
+        slide_duration: Duration for each slide (seconds).
+        video_quality: Video quality (std/pro).
+        max_concurrent: Maximum concurrent video generation tasks.
+        skip_preview: Whether to skip preview video generation.
+        prompts_file: Path to transition prompts JSON file.
+
+    Returns:
+        Result dictionary with generation statistics, or None on failure.
     """
-    print("\n" + "="*80)
-    print("🎬 PPT视频生成 - 完整流程")
-    print("="*80)
+    print("\n" + "=" * 80)
+    print("PPT Video Generation - Full Pipeline")
+    print("=" * 80)
 
-    # 1. 扫描PPT图片
-    print(f"\n📁 扫描PPT图片目录: {slides_dir}")
-    slides_paths = sorted(Path(slides_dir).glob("slide-*.png"))
-
-    if not slides_paths:
-        print(f"❌ 未找到PPT图片（格式：slide-*.png）")
+    # Phase 1: Scan slide images
+    print(f"\nScanning slides directory: {slides_dir}")
+    try:
+        slides_paths = scan_slide_images(slides_dir)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
         return None
 
-    slides_paths = [str(p) for p in slides_paths]
     num_slides = len(slides_paths)
-
-    print(f"✅ 找到 {num_slides} 页PPT")
+    print(f"Found {num_slides} slides:")
     for i, path in enumerate(slides_paths, 1):
-        print(f"   {i}. {Path(path).name}")
+        print(f"  {i}. {Path(path).name}")
 
-    # 2. 创建输出目录结构
-    os.makedirs(output_dir, exist_ok=True)
-    videos_dir = os.path.join(output_dir, "videos")
-    os.makedirs(videos_dir, exist_ok=True)
+    # Phase 2: Create output directories
+    videos_dir = create_output_directories(output_dir)
+    print(f"\nOutput directory: {output_dir}")
+    print(f"  Videos: {videos_dir}/")
 
-    print(f"\n📁 输出目录: {output_dir}")
-    print(f"   视频素材: {videos_dir}/")
-
-    # 3. 生成视频素材
-    print("\n" + "="*80)
-    print("阶段1: 生成视频素材（预览+过渡）")
-    print("="*80)
+    # Phase 3: Generate video materials
+    print("\n" + "=" * 80)
+    print("Phase 1: Generate Video Materials (Preview + Transitions)")
+    print("=" * 80)
 
     materials_generator = VideoMaterialsGenerator(
         max_concurrent=max_concurrent,
-        prompts_file=prompts_file  # 传入提示词文件
+        prompts_file=prompts_file,
     )
 
-    # 准备内容上下文（可选，帮助生成更好的转场提示词）
-    content_contexts = []
-    for i in range(num_slides - 1):
-        context = f"从第{i+1}页过渡到第{i+2}页"
-        content_contexts.append(context)
+    # Prepare content contexts
+    content_contexts = [
+        f"Transition from slide {i+1} to slide {i+2}"
+        for i in range(num_slides - 1)
+    ]
 
-    # 生成所有视频素材
     materials_result = materials_generator.generate_all_materials(
         slides_paths=slides_paths,
         output_dir=videos_dir,
         content_contexts=content_contexts,
         duration=video_duration,
         mode=video_quality,
-        skip_preview=skip_preview
+        skip_preview=skip_preview,
     )
 
-    if materials_result['failed_count'] > 0:
-        print(f"\n⚠️  警告：{materials_result['failed_count']} 个视频生成失败")
-        print("继续合成，但最终视频可能不完整...")
+    if materials_result["failed_count"] > 0:
+        print(f"\nWarning: {materials_result['failed_count']} video(s) failed")
+        print("Continuing with composition, final video may be incomplete...")
 
-    # 4. 合成完整视频（如果需要）
-    if video_mode in ["both", "local"]:
-        print("\n" + "="*80)
-        print("阶段2: 合成完整PPT视频")
-        print("="*80)
+    # Phase 4: Compose full video (if needed)
+    if video_mode in ("both", "local"):
+        print("\n" + "=" * 80)
+        print("Phase 2: Compose Full PPT Video")
+        print("=" * 80)
 
         composer = VideoComposer()
 
-        # 准备过渡视频字典
-        transitions_dict = {}
-        for key, result in materials_result['transitions'].items():
-            if result['success']:
-                transitions_dict[key] = result['video_path']
+        # Build transitions dictionary
+        transitions_dict = {
+            key: result["video_path"]
+            for key, result in materials_result["transitions"].items()
+            if result["success"]
+        }
 
-        # 合成完整视频
         full_video_path = os.path.join(output_dir, "full_ppt_video.mp4")
 
         preview_video = None
-        if materials_result['preview'] and not skip_preview:
-            preview_video = materials_result['preview']['video_path']
+        if materials_result["preview"] and not skip_preview:
+            preview_video = materials_result["preview"]["video_path"]
 
         compose_success = composer.compose_full_ppt_video(
             slides_paths=slides_paths,
             transitions_dict=transitions_dict,
             output_path=full_video_path,
             slide_duration=slide_duration,
-            include_preview=False,  # 预览视频通常用于网页端，不放入完整视频
-            preview_video_path=preview_video
+            include_preview=False,
+            preview_video_path=preview_video,
         )
 
         if compose_success:
-            print(f"✅ 完整视频已生成: {full_video_path}")
+            print(f"Full video generated: {full_video_path}")
         else:
-            print(f"❌ 完整视频合成失败")
+            print("Full video composition failed")
 
-    # 5. 生成网页播放器（如果需要）
-    if video_mode in ["both", "web"]:
-        print("\n" + "="*80)
-        print("阶段3: 生成网页播放器")
-        print("="*80)
+    # Phase 5: Generate web viewer (if needed)
+    if video_mode in ("both", "web"):
+        print("\n" + "=" * 80)
+        print("Phase 3: Generate Web Viewer")
+        print("=" * 80)
 
         generate_video_viewer(
             slides_paths=slides_paths,
-            transitions_result=materials_result['transitions'],
-            preview_result=materials_result.get('preview'),
+            transitions_result=materials_result["transitions"],
+            preview_result=materials_result.get("preview"),
             output_dir=output_dir,
-            videos_dir=videos_dir
         )
 
-    # 6. 生成汇总报告
-    print("\n" + "="*80)
-    print("🎉 PPT视频生成完成！")
-    print("="*80)
+    # Phase 6: Print summary
+    print("\n" + "=" * 80)
+    print("PPT Video Generation Complete!")
+    print("=" * 80)
 
-    print(f"\n📊 生成统计：")
-    print(f"   PPT页数: {num_slides}")
-    print(f"   视频素材: {materials_result['success_count']} 成功, {materials_result['failed_count']} 失败")
-    print(f"   总耗时: {materials_result['total_duration']}秒 ({materials_result['total_duration']/60:.1f}分钟)")
+    print(f"\nStatistics:")
+    print(f"  Slides: {num_slides}")
+    print(f"  Videos: {materials_result['success_count']} success, "
+          f"{materials_result['failed_count']} failed")
+    total_minutes = materials_result["total_duration"] / 60
+    print(f"  Duration: {materials_result['total_duration']}s ({total_minutes:.1f}m)")
 
-    print(f"\n📁 输出文件：")
-    if video_mode in ["both", "local"]:
-        print(f"   完整视频: {output_dir}/full_ppt_video.mp4")
-    if video_mode in ["both", "web"]:
-        print(f"   网页播放器: {output_dir}/video_index.html")
-    print(f"   视频素材: {videos_dir}/")
-    print(f"   元数据: {videos_dir}/video_metadata.json")
+    print(f"\nOutput files:")
+    if video_mode in ("both", "local"):
+        print(f"  Full video: {output_dir}/full_ppt_video.mp4")
+    if video_mode in ("both", "web"):
+        print(f"  Web viewer: {output_dir}/video_index.html")
+    print(f"  Video materials: {videos_dir}/")
+    print(f"  Metadata: {videos_dir}/video_metadata.json")
 
-    print("\n" + "="*80 + "\n")
+    print("\n" + "=" * 80 + "\n")
 
     return {
-        'output_dir': output_dir,
-        'num_slides': num_slides,
-        'materials_result': materials_result,
-        'video_mode': video_mode
+        "output_dir": output_dir,
+        "num_slides": num_slides,
+        "materials_result": materials_result,
+        "video_mode": video_mode,
     }
 
 
+# =============================================================================
+# Web Viewer Generation
+# =============================================================================
+
 def generate_video_viewer(
     slides_paths: List[str],
-    transitions_result: Dict,
-    preview_result: Optional[Dict],
+    transitions_result: Dict[str, Any],
+    preview_result: Optional[Dict[str, Any]],
     output_dir: str,
-    videos_dir: str
-):
+) -> Optional[str]:
     """
-    生成网页视频播放器
+    Generate HTML video viewer.
 
     Args:
-        slides_paths: PPT图片路径列表
-        transitions_result: 过渡视频结果
-        preview_result: 预览视频结果
-        output_dir: 输出目录
-        videos_dir: 视频素材目录
+        slides_paths: List of slide image paths.
+        transitions_result: Transition video generation results.
+        preview_result: Preview video generation result.
+        output_dir: Output directory.
+
+    Returns:
+        Path to generated HTML file, or None if template not found.
     """
-    from pathlib import Path
-    import shutil
+    print("Generating web viewer...")
 
-    print(f"📄 生成网页播放器...")
-
-    # 复制模板文件
     template_path = "templates/video_viewer.html"
     output_html = os.path.join(output_dir, "video_index.html")
 
     if not os.path.exists(template_path):
-        print(f"⚠️  模板文件不存在: {template_path}，跳过网页生成")
-        return
+        print(f"Warning: Template not found: {template_path}, skipping web viewer")
+        return None
 
-    # 构建数据
-    slides_data = []
-    for slide_path in slides_paths:
-        rel_path = os.path.relpath(slide_path, output_dir)
-        slides_data.append(rel_path)
+    # Build slides data (relative paths)
+    slides_data = [os.path.relpath(path, output_dir) for path in slides_paths]
 
-    transitions_data = {}
-    for key, result in transitions_result.items():
-        if result['success']:
-            rel_path = os.path.relpath(result['video_path'], output_dir)
-            transitions_data[key] = rel_path
+    # Build transitions data
+    transitions_data = {
+        key: os.path.relpath(result["video_path"], output_dir)
+        for key, result in transitions_result.items()
+        if result["success"]
+    }
 
+    # Build preview data
     preview_data = None
     if preview_result:
-        preview_data = os.path.relpath(preview_result['video_path'], output_dir)
+        preview_data = os.path.relpath(preview_result["video_path"], output_dir)
 
-    # 读取模板
-    with open(template_path, 'r', encoding='utf-8') as f:
+    # Read template and replace placeholders
+    with open(template_path, "r", encoding="utf-8") as f:
         html_content = f.read()
 
-    # 替换占位符
-    html_content = html_content.replace(
-        "/* SLIDES_DATA_PLACEHOLDER */",
-        json.dumps(slides_data, ensure_ascii=False)
-    )
-    html_content = html_content.replace(
-        "/* TRANSITIONS_DATA_PLACEHOLDER */",
-        json.dumps(transitions_data, ensure_ascii=False)
-    )
-    html_content = html_content.replace(
-        "/* PREVIEW_DATA_PLACEHOLDER */",
-        json.dumps(preview_data, ensure_ascii=False) if preview_data else "null"
-    )
+    replacements = [
+        ("/* SLIDES_DATA_PLACEHOLDER */", json.dumps(slides_data, ensure_ascii=False)),
+        ("/* TRANSITIONS_DATA_PLACEHOLDER */", json.dumps(transitions_data, ensure_ascii=False)),
+        ("/* PREVIEW_DATA_PLACEHOLDER */", json.dumps(preview_data, ensure_ascii=False) if preview_data else "null"),
+    ]
 
-    # 写入输出文件
-    with open(output_html, 'w', encoding='utf-8') as f:
+    for placeholder, value in replacements:
+        html_content = html_content.replace(placeholder, value)
+
+    with open(output_html, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    print(f"✅ 网页播放器已生成: {output_html}")
+    print(f"Web viewer generated: {output_html}")
+    return output_html
 
 
-def main():
-    """命令行入口"""
+# =============================================================================
+# Command Line Interface
+# =============================================================================
+
+def create_argument_parser() -> argparse.ArgumentParser:
+    """Create and configure argument parser."""
     parser = argparse.ArgumentParser(
-        description='PPT视频生成工具 - 从PPT图片生成带转场动效的视频',
+        description="PPT Video Generator - Create videos with transitions from PPT images",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-示例:
-  # 基本用法（使用Claude Code生成的提示词文件）
+Examples:
+  # Basic usage with prompts file
   python generate_ppt_video.py \\
     --slides-dir outputs/xxx/images \\
     --output-dir outputs/xxx_video \\
     --prompts-file outputs/xxx/transition_prompts.json
 
-  # 完整参数
+  # Full parameters
   python generate_ppt_video.py \\
     --slides-dir outputs/xxx/images \\
     --output-dir outputs/xxx_video \\
@@ -274,97 +325,114 @@ def main():
     --video-quality pro \\
     --max-concurrent 3
 
-工作流程:
-  1. 生成PPT图片: python generate_ppt.py ...
-  2. 让Claude Code分析图片生成提示词:
-     在Claude Code中运行: "请分析outputs/xxx/images中的图片，生成转场提示词"
-  3. 生成转场视频: python generate_ppt_video.py --prompts-file ...
+Workflow:
+  1. Generate PPT images: python generate_ppt.py ...
+  2. Have Claude Code analyze images and generate prompts:
+     Run in Claude Code: "Analyze images in outputs/xxx/images, generate transition prompts"
+  3. Generate videos: python generate_ppt_video.py --prompts-file ...
 
-注意事项:
-  - 确保.env文件中配置了KLING_ACCESS_KEY和KLING_SECRET_KEY
-  - 必须先用Claude Code分析图片生成transition_prompts.json文件
-  - 首尾帧视频生成必须使用pro模式（高质量）
-  - 可灵API并发限制为3，生成时间较长请耐心等待
-        """
+Notes:
+  - Ensure KLING_ACCESS_KEY and KLING_SECRET_KEY are configured in .env
+  - Claude Code must analyze images to create transition_prompts.json
+  - First-last frame videos require pro mode (high quality)
+  - Kling API has concurrent limit of 3, generation takes time
+""",
     )
 
     parser.add_argument(
-        '--slides-dir',
+        "--slides-dir",
         required=True,
-        help='PPT图片目录（包含slide-01.png, slide-02.png等）'
+        help="PPT images directory (containing slide-01.png, slide-02.png, etc.)",
     )
-
     parser.add_argument(
-        '--output-dir',
+        "--output-dir",
         required=True,
-        help='输出目录'
+        help="Output directory",
     )
-
     parser.add_argument(
-        '--video-mode',
-        choices=['both', 'local', 'web'],
-        default='both',
-        help='输出模式：both（本地视频+网页）/ local（仅本地）/ web（仅网页）'
+        "--video-mode",
+        choices=["both", "local", "web"],
+        default=DEFAULT_VIDEO_MODE,
+        help=f"Output mode: both/local/web (default: {DEFAULT_VIDEO_MODE})",
     )
-
     parser.add_argument(
-        '--video-duration',
-        choices=['5', '10'],
-        default='5',
-        help='过渡视频时长（秒）'
+        "--video-duration",
+        choices=["5", "10"],
+        default=DEFAULT_VIDEO_DURATION,
+        help=f"Transition video duration in seconds (default: {DEFAULT_VIDEO_DURATION})",
     )
-
     parser.add_argument(
-        '--slide-duration',
+        "--slide-duration",
         type=int,
-        default=5,
-        help='每页停留时长（秒）'
+        default=DEFAULT_SLIDE_DURATION,
+        help=f"Duration per slide in seconds (default: {DEFAULT_SLIDE_DURATION})",
     )
-
     parser.add_argument(
-        '--video-quality',
-        choices=['std', 'pro'],
-        default='pro',
-        help='视频质量：std（标准）/ pro（高品质，首尾帧必需）'
+        "--video-quality",
+        choices=["std", "pro"],
+        default=DEFAULT_VIDEO_QUALITY,
+        help=f"Video quality: std/pro (default: {DEFAULT_VIDEO_QUALITY})",
     )
-
     parser.add_argument(
-        '--max-concurrent',
+        "--max-concurrent",
         type=int,
-        default=3,
-        help='最大并发数（默认3，可灵API限制）'
+        default=DEFAULT_MAX_CONCURRENT,
+        help=f"Maximum concurrent tasks (default: {DEFAULT_MAX_CONCURRENT})",
     )
-
     parser.add_argument(
-        '--skip-preview',
-        action='store_true',
-        help='跳过预览视频生成'
+        "--skip-preview",
+        action="store_true",
+        help="Skip preview video generation",
     )
-
     parser.add_argument(
-        '--prompts-file',
+        "--prompts-file",
         required=True,
-        help='转场提示词文件路径（JSON格式，必须由Claude Code分析图片后生成）'
+        help="Path to transition prompts JSON file (generated by Claude Code)",
     )
 
+    return parser
+
+
+def validate_inputs(args: argparse.Namespace) -> bool:
+    """
+    Validate command line inputs.
+
+    Args:
+        args: Parsed command line arguments.
+
+    Returns:
+        True if all inputs are valid, False otherwise.
+    """
+    if not os.path.exists(args.slides_dir):
+        print(f"Error: Slides directory not found: {args.slides_dir}")
+        return False
+
+    if not os.path.exists(args.prompts_file):
+        print(f"Error: Prompts file not found: {args.prompts_file}")
+        print(f"\nHow to generate prompts file:")
+        print(f"  1. Run in Claude Code:")
+        print(f"     'Analyze images in {args.slides_dir}, generate transition prompts,")
+        print(f"      save to transition_prompts.json'")
+        print(f"  2. Use --prompts-file to specify the generated file path")
+        return False
+
+    return True
+
+
+def main() -> None:
+    """Main entry point."""
+    # Load environment variables
+    load_dotenv()
+
+    # Parse arguments
+    parser = create_argument_parser()
     args = parser.parse_args()
 
-    # 验证输入目录
-    if not os.path.exists(args.slides_dir):
-        print(f"❌ 错误: PPT图片目录不存在: {args.slides_dir}")
+    # Validate inputs
+    if not validate_inputs(args):
         sys.exit(1)
 
-    # 验证提示词文件
-    if not os.path.exists(args.prompts_file):
-        print(f"❌ 错误: 提示词文件不存在: {args.prompts_file}")
-        print(f"\n💡 如何生成提示词文件：")
-        print(f"   1. 在 Claude Code 中运行以下提示：")
-        print(f"      '请分析 {args.slides_dir} 中的图片，生成转场视频提示词，")
-        print(f"       保存为 transition_prompts.json'")
-        print(f"   2. 然后使用 --prompts-file 参数指定生成的文件路径")
-        sys.exit(1)
-
-    # 执行生成
+    # Execute generation
     try:
         result = generate_ppt_video_from_images(
             slides_dir=args.slides_dir,
@@ -375,20 +443,16 @@ def main():
             video_quality=args.video_quality,
             max_concurrent=args.max_concurrent,
             skip_preview=args.skip_preview,
-            prompts_file=args.prompts_file  # 传入提示词文件
+            prompts_file=args.prompts_file,
         )
 
-        if result:
-            sys.exit(0)
-        else:
-            sys.exit(1)
+        sys.exit(0 if result else 1)
 
     except KeyboardInterrupt:
-        print("\n\n⚠️  用户中断操作")
+        print("\n\nOperation cancelled by user")
         sys.exit(130)
     except Exception as e:
-        print(f"\n❌ 发生错误: {str(e)}")
-        import traceback
+        print(f"\nError: {e}")
         traceback.print_exc()
         sys.exit(1)
 

@@ -1,135 +1,154 @@
 #!/usr/bin/env python3
 """
-视频素材生成模块
-负责生成预览视频和所有页面过渡视频
-支持并发控制（最大并发数：3）
+Video Materials Generator Module.
+
+Responsible for generating preview videos and transition videos for PPT slides.
+Supports concurrent generation with configurable limits.
 """
 
-import os
 import json
+import os
 import time
-from pathlib import Path
-from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from kling_api import KlingVideoGenerator
 from prompt_file_reader import PromptFileReader
 
 
+# =============================================================================
+# Constants
+# =============================================================================
+
+DEFAULT_MAX_CONCURRENT = 3
+DEFAULT_DURATION = "5"
+DEFAULT_MODE = "pro"
+
+
+# =============================================================================
+# Video Materials Generator
+# =============================================================================
+
 class VideoMaterialsGenerator:
-    """视频素材生成器"""
+    """Generator for PPT video materials (preview and transition videos)."""
 
     def __init__(
         self,
         kling_client: Optional[KlingVideoGenerator] = None,
-        prompt_generator = None,
-        max_concurrent: int = 3,
-        prompts_file: Optional[str] = None
-    ):
+        prompt_generator: Optional[Any] = None,
+        max_concurrent: int = DEFAULT_MAX_CONCURRENT,
+        prompts_file: Optional[str] = None,
+    ) -> None:
         """
-        初始化生成器
+        Initialize video materials generator.
 
         Args:
-            kling_client: 可灵API客户端（如果不提供，自动创建）
-            prompt_generator: 转场提示词生成器（如果不提供，必须提供prompts_file）
-            max_concurrent: 最大并发数，默认3
-            prompts_file: 提示词文件路径（必需，由Claude Code生成）
+            kling_client: Kling API client instance (created if not provided).
+            prompt_generator: Custom prompt generator (prompts_file takes priority).
+            max_concurrent: Maximum concurrent video generation tasks.
+            prompts_file: Path to prompts JSON file (required if no prompt_generator).
+
+        Raises:
+            ValueError: If neither prompts_file nor prompt_generator is provided.
         """
         self.kling_client = kling_client or KlingVideoGenerator()
+        self.max_concurrent = max_concurrent
 
-        # 选择提示词生成器（优先级：文件 > 自定义）
+        # Initialize prompt generator
         if prompts_file:
             self.prompt_generator = PromptFileReader(prompts_file)
-            print(f"✅ 使用提示词文件: {prompts_file}")
+            print(f"Using prompts file: {prompts_file}")
         elif prompt_generator:
             self.prompt_generator = prompt_generator
-            print(f"✅ 使用自定义提示词生成器")
+            print("Using custom prompt generator")
         else:
             raise ValueError(
-                "❌ 缺少转场提示词！\n\n"
-                "视频生成需要转场提示词文件，请按以下步骤操作：\n"
-                "1. 在 Claude Code 中运行以下提示：\n"
-                "   '请分析 outputs/xxx/images 中的图片，生成转场视频提示词，\n"
-                "    保存为 outputs/xxx/transition_prompts.json'\n"
-                "2. 然后使用 --prompts-file 参数指定生成的文件路径\n\n"
-                "示例:\n"
+                "Missing transition prompts.\n\n"
+                "To generate video transitions, you need a prompts file.\n"
+                "Follow these steps:\n"
+                "1. In Claude Code, run:\n"
+                "   'Analyze images in outputs/xxx/images, generate transition prompts,\n"
+                "    save to outputs/xxx/transition_prompts.json'\n"
+                "2. Use --prompts-file to specify the generated file path\n\n"
+                "Example:\n"
                 "  python generate_ppt_video.py \\\n"
                 "    --slides-dir outputs/xxx/images \\\n"
                 "    --output-dir outputs/xxx_video \\\n"
                 "    --prompts-file outputs/xxx/transition_prompts.json"
             )
 
-        self.max_concurrent = max_concurrent
+        print(f"Video materials generator initialized")
+        print(f"  Max concurrent: {max_concurrent}")
 
-        print(f"✅ 视频素材生成器初始化完成")
-        print(f"   最大并发数: {max_concurrent}")
+    # -------------------------------------------------------------------------
+    # Preview Video Generation
+    # -------------------------------------------------------------------------
 
     def generate_preview_video(
         self,
         first_slide_path: str,
         output_dir: str,
-        duration: str = "5",
-        mode: str = "pro"
-    ) -> Dict[str, str]:
+        duration: str = DEFAULT_DURATION,
+        mode: str = DEFAULT_MODE,
+    ) -> Dict[str, Any]:
         """
-        生成首页预览视频（首尾帧相同，微动效）
+        Generate preview video for the first slide (same first and last frame).
 
         Args:
-            first_slide_path: 第一页PPT图片路径
-            output_dir: 输出目录
-            duration: 视频时长（5或10秒）
-            mode: 生成模式（std/pro，首尾帧必须用pro）
+            first_slide_path: Path to first slide image.
+            output_dir: Output directory.
+            duration: Video duration (5 or 10 seconds).
+            mode: Generation mode (std/pro).
 
         Returns:
-            result: {
-                'video_path': 视频文件路径,
-                'prompt': 使用的提示词,
-                'duration': 实际耗时（秒）
-            }
-        """
-        print("\n" + "="*80)
-        print("🎬 生成首页预览视频")
-        print("="*80)
+            Result dict with video_path, prompt, and duration.
 
-        # 生成预览提示词
+        Raises:
+            Exception: If video generation fails.
+        """
+        print("\n" + "=" * 80)
+        print("Generating Preview Video")
+        print("=" * 80)
+
         preview_prompt = self.prompt_generator.generate_preview_prompt(first_slide_path)
 
-        # 创建输出目录
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, "preview.mp4")
 
-        # 生成视频（首尾帧相同）
-        print(f"\n🚀 开始生成预览视频...")
+        print(f"\nGenerating preview video...")
         start_time = time.time()
 
         try:
             self.kling_client.generate_and_download(
                 image_start=first_slide_path,
-                image_end=first_slide_path,  # 首尾帧相同
+                image_end=first_slide_path,  # Same as start for looping
                 prompt=preview_prompt,
                 output_path=output_path,
                 model_name="kling-v2-6",
                 duration=duration,
-                mode=mode
+                mode=mode,
             )
 
             elapsed = int(time.time() - start_time)
 
-            result = {
-                'video_path': output_path,
-                'prompt': preview_prompt,
-                'duration': elapsed
+            print(f"\nPreview video generated!")
+            print(f"  Duration: {elapsed}s")
+            print(f"  Path: {output_path}\n")
+
+            return {
+                "video_path": output_path,
+                "prompt": preview_prompt,
+                "duration": elapsed,
             }
 
-            print(f"\n✅ 预览视频生成完成！")
-            print(f"   耗时: {elapsed}秒")
-            print(f"   路径: {output_path}\n")
-
-            return result
-
         except Exception as e:
-            print(f"\n❌ 预览视频生成失败: {str(e)}\n")
+            print(f"\nPreview video generation failed: {e}\n")
             raise
+
+    # -------------------------------------------------------------------------
+    # Transition Video Generation
+    # -------------------------------------------------------------------------
 
     def _generate_single_transition(
         self,
@@ -137,38 +156,37 @@ class VideoMaterialsGenerator:
         slide_to: str,
         output_path: str,
         content_context: Optional[str] = None,
-        duration: str = "5",
-        mode: str = "pro"
-    ) -> Dict[str, any]:
+        duration: str = DEFAULT_DURATION,
+        mode: str = DEFAULT_MODE,
+    ) -> Dict[str, Any]:
         """
-        生成单个过渡视频（内部方法）
+        Generate a single transition video.
+
+        Args:
+            slide_from: Source slide path.
+            slide_to: Target slide path.
+            output_path: Output video path.
+            content_context: Content context for prompt generation.
+            duration: Video duration.
+            mode: Generation mode.
 
         Returns:
-            result: {
-                'from_to': '1-2',
-                'video_path': 路径,
-                'prompt': 提示词,
-                'duration': 耗时,
-                'success': True/False,
-                'error': 错误信息（如果失败）
-            }
+            Result dict with success status and details.
         """
-        from_num = Path(slide_from).stem.split('-')[-1]
-        to_num = Path(slide_to).stem.split('-')[-1]
+        from_num = Path(slide_from).stem.split("-")[-1]
+        to_num = Path(slide_to).stem.split("-")[-1]
         transition_key = f"{from_num}-{to_num}"
 
-        print(f"\n📹 生成过渡视频 [{transition_key}]")
-        print(f"   {Path(slide_from).name} → {Path(slide_to).name}")
+        print(f"\nGenerating transition [{transition_key}]")
+        print(f"  {Path(slide_from).name} -> {Path(slide_to).name}")
 
         try:
-            # 生成转场提示词
             transition_prompt = self.prompt_generator.generate_prompt(
                 frame_start_path=slide_from,
                 frame_end_path=slide_to,
-                content_context=content_context
+                content_context=content_context,
             )
 
-            # 生成视频
             start_time = time.time()
 
             self.kling_client.generate_and_download(
@@ -178,27 +196,27 @@ class VideoMaterialsGenerator:
                 output_path=output_path,
                 model_name="kling-v2-6",
                 duration=duration,
-                mode=mode
+                mode=mode,
             )
 
             elapsed = int(time.time() - start_time)
 
             return {
-                'from_to': transition_key,
-                'video_path': output_path,
-                'prompt': transition_prompt,
-                'duration': elapsed,
-                'success': True
+                "from_to": transition_key,
+                "video_path": output_path,
+                "prompt": transition_prompt,
+                "duration": elapsed,
+                "success": True,
             }
 
         except Exception as e:
             return {
-                'from_to': transition_key,
-                'video_path': output_path,
-                'prompt': '',
-                'duration': 0,
-                'success': False,
-                'error': str(e)
+                "from_to": transition_key,
+                "video_path": output_path,
+                "prompt": "",
+                "duration": 0,
+                "success": False,
+                "error": str(e),
             }
 
     def generate_transition_videos(
@@ -206,261 +224,235 @@ class VideoMaterialsGenerator:
         slides_paths: List[str],
         output_dir: str,
         content_contexts: Optional[List[str]] = None,
-        duration: str = "5",
-        mode: str = "pro"
-    ) -> Dict[str, Dict]:
+        duration: str = DEFAULT_DURATION,
+        mode: str = DEFAULT_MODE,
+    ) -> Dict[str, Dict[str, Any]]:
         """
-        批量生成所有页面过渡视频（支持并发控制）
+        Generate all transition videos with concurrent execution.
 
         Args:
-            slides_paths: PPT图片路径列表（按顺序）
-            output_dir: 输出目录
-            content_contexts: 每个过渡的内容上下文列表（可选）
-            duration: 视频时长
-            mode: 生成模式
+            slides_paths: List of slide image paths in order.
+            output_dir: Output directory.
+            content_contexts: Optional list of content contexts for each transition.
+            duration: Video duration.
+            mode: Generation mode.
 
         Returns:
-            transitions: {
-                '1-2': {'video_path': ..., 'prompt': ..., 'duration': ...},
-                '2-3': {...},
-                ...
-            }
+            Dict mapping transition keys to result dicts.
         """
-        print("\n" + "="*80)
-        print("🎬 批量生成过渡视频")
-        print("="*80)
+        print("\n" + "=" * 80)
+        print("Generating Transition Videos")
+        print("=" * 80)
 
         num_slides = len(slides_paths)
         num_transitions = num_slides - 1
 
-        print(f"\n📊 任务统计：")
-        print(f"   总页数: {num_slides}")
-        print(f"   过渡视频数: {num_transitions}")
-        print(f"   最大并发: {self.max_concurrent}")
-        print(f"   预计耗时: {num_transitions * 100 / self.max_concurrent:.0f}-{num_transitions * 120 / self.max_concurrent:.0f}秒\n")
+        estimated_time_min = num_transitions * 100 / self.max_concurrent
+        estimated_time_max = num_transitions * 120 / self.max_concurrent
 
-        # 创建输出目录
+        print(f"\nTask summary:")
+        print(f"  Slides: {num_slides}")
+        print(f"  Transitions: {num_transitions}")
+        print(f"  Max concurrent: {self.max_concurrent}")
+        print(f"  Estimated time: {estimated_time_min:.0f}-{estimated_time_max:.0f}s\n")
+
         os.makedirs(output_dir, exist_ok=True)
 
-        # 准备任务列表
+        # Prepare tasks
         tasks = []
         for i in range(num_transitions):
-            slide_from = slides_paths[i]
-            slide_to = slides_paths[i + 1]
-
-            from_num = Path(slide_from).stem.split('-')[-1]
-            to_num = Path(slide_to).stem.split('-')[-1]
-
-            output_path = os.path.join(output_dir, f"transition_{from_num}_to_{to_num}.mp4")
-
-            context = None
-            if content_contexts and i < len(content_contexts):
-                context = content_contexts[i]
+            from_num = Path(slides_paths[i]).stem.split("-")[-1]
+            to_num = Path(slides_paths[i + 1]).stem.split("-")[-1]
 
             tasks.append({
-                'slide_from': slide_from,
-                'slide_to': slide_to,
-                'output_path': output_path,
-                'content_context': context
+                "slide_from": slides_paths[i],
+                "slide_to": slides_paths[i + 1],
+                "output_path": os.path.join(output_dir, f"transition_{from_num}_to_{to_num}.mp4"),
+                "content_context": content_contexts[i] if content_contexts and i < len(content_contexts) else None,
             })
 
-        # 使用线程池执行（限制并发数）
-        results = {}
+        # Execute with thread pool
+        results: Dict[str, Dict[str, Any]] = {}
         completed_count = 0
         failed_count = 0
 
-        print(f"🚀 开始生成（并发数: {self.max_concurrent}）...\n")
+        print(f"Starting generation (concurrent: {self.max_concurrent})...\n")
         start_time = time.time()
 
         with ThreadPoolExecutor(max_workers=self.max_concurrent) as executor:
-            # 提交所有任务
             future_to_task = {
                 executor.submit(
                     self._generate_single_transition,
-                    task['slide_from'],
-                    task['slide_to'],
-                    task['output_path'],
-                    task['content_context'],
+                    task["slide_from"],
+                    task["slide_to"],
+                    task["output_path"],
+                    task["content_context"],
                     duration,
-                    mode
-                ): task for task in tasks
+                    mode,
+                ): task
+                for task in tasks
             }
 
-            # 收集结果
             for future in as_completed(future_to_task):
                 result = future.result()
-                transition_key = result['from_to']
+                transition_key = result["from_to"]
                 results[transition_key] = result
 
                 completed_count += 1
 
-                if result['success']:
-                    print(f"✅ [{completed_count}/{num_transitions}] 过渡视频 {transition_key} 完成 ({result['duration']}秒)")
+                if result["success"]:
+                    print(f"  [{completed_count}/{num_transitions}] "
+                          f"Transition {transition_key} complete ({result['duration']}s)")
                 else:
                     failed_count += 1
-                    print(f"❌ [{completed_count}/{num_transitions}] 过渡视频 {transition_key} 失败: {result['error']}")
+                    print(f"  [{completed_count}/{num_transitions}] "
+                          f"Transition {transition_key} failed: {result['error']}")
 
         total_elapsed = int(time.time() - start_time)
 
-        # 汇总报告
-        print("\n" + "="*80)
-        print("📊 批量生成完成")
-        print("="*80)
-        print(f"   总耗时: {total_elapsed}秒 ({total_elapsed/60:.1f}分钟)")
-        print(f"   成功: {num_transitions - failed_count}/{num_transitions}")
-        print(f"   失败: {failed_count}/{num_transitions}")
+        # Summary
+        print("\n" + "=" * 80)
+        print("Transition Generation Complete")
+        print("=" * 80)
+        print(f"  Total time: {total_elapsed}s ({total_elapsed/60:.1f}m)")
+        print(f"  Success: {num_transitions - failed_count}/{num_transitions}")
+        print(f"  Failed: {failed_count}/{num_transitions}")
 
         if failed_count > 0:
-            print(f"\n⚠️  以下过渡视频生成失败：")
+            print(f"\n  Failed transitions:")
             for key, result in results.items():
-                if not result['success']:
-                    print(f"   - {key}: {result['error']}")
+                if not result["success"]:
+                    print(f"    - {key}: {result['error']}")
 
-        print("="*80 + "\n")
+        print("=" * 80 + "\n")
 
         return results
 
-    def save_metadata(self, output_dir: str, metadata: Dict):
+    # -------------------------------------------------------------------------
+    # Metadata
+    # -------------------------------------------------------------------------
+
+    def save_metadata(self, output_dir: str, metadata: Dict[str, Any]) -> str:
         """
-        保存元数据到JSON文件
+        Save generation metadata to JSON file.
 
         Args:
-            output_dir: 输出目录
-            metadata: 元数据字典
+            output_dir: Output directory.
+            metadata: Metadata dictionary.
+
+        Returns:
+            Path to saved metadata file.
         """
         metadata_path = os.path.join(output_dir, "video_metadata.json")
 
-        with open(metadata_path, 'w', encoding='utf-8') as f:
+        with open(metadata_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, ensure_ascii=False, indent=2)
 
-        print(f"💾 元数据已保存: {metadata_path}")
+        print(f"Metadata saved: {metadata_path}")
+        return metadata_path
+
+    # -------------------------------------------------------------------------
+    # High-Level API
+    # -------------------------------------------------------------------------
 
     def generate_all_materials(
         self,
         slides_paths: List[str],
         output_dir: str,
         content_contexts: Optional[List[str]] = None,
-        duration: str = "5",
-        mode: str = "pro",
-        skip_preview: bool = False
-    ) -> Dict:
+        duration: str = DEFAULT_DURATION,
+        mode: str = DEFAULT_MODE,
+        skip_preview: bool = False,
+    ) -> Dict[str, Any]:
         """
-        一键生成所有视频素材（预览+所有过渡）
+        Generate all video materials (preview + transitions) in one call.
 
         Args:
-            slides_paths: PPT图片路径列表
-            output_dir: 输出目录
-            content_contexts: 内容上下文列表
-            duration: 视频时长
-            mode: 生成模式
-            skip_preview: 是否跳过预览视频生成
+            slides_paths: List of slide image paths.
+            output_dir: Output directory.
+            content_contexts: Optional content contexts for transitions.
+            duration: Video duration.
+            mode: Generation mode.
+            skip_preview: Whether to skip preview video generation.
 
         Returns:
-            all_results: {
-                'preview': {...},
-                'transitions': {...},
-                'total_duration': 总耗时,
-                'success_count': 成功数,
-                'failed_count': 失败数
-            }
+            Complete results dict with preview, transitions, and statistics.
         """
-        print("\n" + "="*80)
-        print("🎬 一键生成所有视频素材")
-        print("="*80)
+        print("\n" + "=" * 80)
+        print("Generating All Video Materials")
+        print("=" * 80)
 
         total_start = time.time()
-        all_results = {
-            'preview': None,
-            'transitions': {},
-            'total_duration': 0,
-            'success_count': 0,
-            'failed_count': 0
+
+        all_results: Dict[str, Any] = {
+            "preview": None,
+            "transitions": {},
+            "total_duration": 0,
+            "success_count": 0,
+            "failed_count": 0,
         }
 
-        # 1. 生成预览视频
+        # Generate preview video
         if not skip_preview:
             try:
                 preview_result = self.generate_preview_video(
                     first_slide_path=slides_paths[0],
                     output_dir=output_dir,
                     duration=duration,
-                    mode=mode
+                    mode=mode,
                 )
-                all_results['preview'] = preview_result
-                all_results['success_count'] += 1
+                all_results["preview"] = preview_result
+                all_results["success_count"] += 1
             except Exception as e:
-                print(f"⚠️  预览视频生成失败，继续生成过渡视频: {str(e)}")
-                all_results['failed_count'] += 1
+                print(f"Warning: Preview generation failed, continuing: {e}")
+                all_results["failed_count"] += 1
         else:
-            print("⏭️  跳过预览视频生成")
+            print("Skipping preview video generation")
 
-        # 2. 生成所有过渡视频
+        # Generate transition videos
         transition_results = self.generate_transition_videos(
             slides_paths=slides_paths,
             output_dir=output_dir,
             content_contexts=content_contexts,
             duration=duration,
-            mode=mode
+            mode=mode,
         )
 
-        all_results['transitions'] = transition_results
+        all_results["transitions"] = transition_results
 
-        # 统计成功/失败数
+        # Count successes/failures
         for result in transition_results.values():
-            if result['success']:
-                all_results['success_count'] += 1
+            if result["success"]:
+                all_results["success_count"] += 1
             else:
-                all_results['failed_count'] += 1
+                all_results["failed_count"] += 1
 
-        # 总耗时
-        all_results['total_duration'] = int(time.time() - total_start)
+        all_results["total_duration"] = int(time.time() - total_start)
 
-        # 保存元数据
+        # Save metadata
         self.save_metadata(output_dir, all_results)
 
-        # 最终报告
-        print("\n" + "="*80)
-        print("🎉 所有视频素材生成完成！")
-        print("="*80)
-        print(f"   总耗时: {all_results['total_duration']}秒 ({all_results['total_duration']/60:.1f}分钟)")
-        print(f"   成功: {all_results['success_count']}")
-        print(f"   失败: {all_results['failed_count']}")
-        print(f"   输出目录: {output_dir}")
-        print("="*80 + "\n")
+        # Final summary
+        total_minutes = all_results["total_duration"] / 60
+        print("\n" + "=" * 80)
+        print("All Video Materials Generated!")
+        print("=" * 80)
+        print(f"  Total time: {all_results['total_duration']}s ({total_minutes:.1f}m)")
+        print(f"  Success: {all_results['success_count']}")
+        print(f"  Failed: {all_results['failed_count']}")
+        print(f"  Output: {output_dir}")
+        print("=" * 80 + "\n")
 
         return all_results
 
 
+# =============================================================================
+# Main (for testing)
+# =============================================================================
+
 if __name__ == "__main__":
-    """测试代码"""
     from dotenv import load_dotenv
     load_dotenv()
 
-    # 初始化生成器
-    generator = VideoMaterialsGenerator(max_concurrent=3)
-
-    # 测试数据
-    test_slides = [
-        "outputs/20260109_121822/images/slide-01.png",
-        "outputs/20260109_121822/images/slide-02.png",
-        "outputs/20260109_121822/images/slide-03.png"
-    ]
-
-    # 内容上下文
-    contexts = [
-        "从封面页过渡到第一个内容页",
-        "从第一个内容页过渡到第二个内容页"
-    ]
-
-    # 生成所有素材
-    results = generator.generate_all_materials(
-        slides_paths=test_slides,
-        output_dir="test_outputs/video_materials",
-        content_contexts=contexts,
-        duration="5",
-        mode="pro"
-    )
-
-    print(f"\n✅ 测试完成！")
-    print(f"   预览视频: {results['preview']['video_path'] if results['preview'] else 'N/A'}")
-    print(f"   过渡视频: {len(results['transitions'])} 个")
+    print("VideoMaterialsGenerator requires a prompts file to run.")
+    print("Use generate_ppt_video.py for complete workflow.")
