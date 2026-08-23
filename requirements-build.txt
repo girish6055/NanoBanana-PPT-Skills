@@ -1,0 +1,3 @@
+# The application itself needs only the Python standard library (tkinter).
+# This file lists what is required to package it as an executable.
+pyinstaller>=6.6
