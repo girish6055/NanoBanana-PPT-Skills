@@ -16,11 +16,14 @@ everything runs in the page, and the company plate is stored in that browser's
 | **PPL** — People & HR | Job posting · Interview guide · Offer letter · First-week plan · Policy · Performance review · Difficult-conversation script |
 | **MKT** — Marketing | 4-week campaign plan · Positioning · Homepage copy · Customer email · Ad set · Press announcement |
 | **SOC** — Social media | 7-day content calendar · LinkedIn post · Instagram captions · X thread · Reel script · Review replies |
+| **SLS** — Sales | Cold outreach · Discovery call guide · Proposal · Objection handling · Deal recap email · Pipeline review |
+| **FIN** — Finance | Monthly numbers memo · Annual budget memo · Pricing change memo · Cash and runway note · Late invoice sequence · Spend approval policy |
+| **CS** — Customer support | Canned reply set · Outage notice · Escalation path · Help-centre article · Refund and credit rules · Cancellation reply |
 
 ## How it works
 
 The **company plate** — name, what you do, who it's for, voice, your name and role —
-is read by every template, so the audience and tone carry across all 25 jobs. Each job
+is read by every template, so the audience and tone carry across all 43 jobs. Each job
 adds a short brief of its own; anything left blank comes back in `[brackets]` so it is
 obvious what still needs a human. The sheet header counts the blanks, and **Copy
 document** puts the Markdown source on the clipboard.
@@ -39,5 +42,7 @@ Every job lives in the `STATIONS` array in `index.html`:
 
 `p` is the company plate with bracketed fallbacks already applied (`p.co`, `p.who`,
 `p.me`, `p.v` for voice); `f` holds the brief. Helpers: `B(value, "placeholder")` for a
-single value, `bul` / `num` for lists from a textarea, `first` for the leading line.
-A new station is a new entry in `STATIONS` with a three-letter `code`.
+single value, `bul` / `num` for lists from a textarea, `first` for the leading line,
+`cols` / `cell` for textareas whose lines are `a — b — c`, `fname` for a first name, and
+`money` / `fmt` for arithmetic on what someone typed. A new station is a new entry in
+`STATIONS` with a three-letter `code`.

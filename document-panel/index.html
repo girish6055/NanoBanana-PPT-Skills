@@ -338,6 +338,15 @@ function num(v,phs){return list(v,phs).map(function(x,i){return (i+1)+". "+x;}).
 function first(v,ph){var L=lines(v);return L.length?L[0].replace(/\.$/,""):("["+ph+"]");}
 function lower(s){return s.charAt(0).toLowerCase()+s.slice(1);}
 function clock(m){var h=Math.floor(m/60),r=m%60;return h+":"+(r<10?"0":"")+r;}
+function money(v){
+  var s=S(v).replace(/[$,\s]/g,""), mult=1;
+  if(!/^\d+(\.\d+)?[kKmM]?$/.test(s))return null;
+  if(/[kK]$/.test(s)){mult=1e3;s=s.slice(0,-1);}
+  else if(/[mM]$/.test(s)){mult=1e6;s=s.slice(0,-1);}
+  var n=parseFloat(s);
+  return isFinite(n)?n*mult:null;
+}
+function fmt(n){return "$"+Math.round(n).toLocaleString("en-US");}
 function today(){
   var d=new Date();
   return d.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
@@ -387,6 +396,15 @@ function plateFilled(raw){
   ["co","what","who","me","role"].forEach(function(k){if(S(v[k]))n++;});
   return n;
 }
+
+/* ---------------- list helpers ---------------- */
+function cols(v,phs){
+  var L=lines(v);
+  if(!L.length)return [phs.map(function(x){return "["+x+"]";})];
+  return L.map(function(r){return r.split("—").map(function(s){return s.trim();});});
+}
+function cell(r,i,ph){return (r&&r[i])?r[i]:("["+ph+"]");}
+function fname(v,ph){var t=S(v);return t?t.split(/\s+/)[0]:("["+ph+"]");}
 
 /* ---------------- field helper ---------------- */
 function F(k,l,t,ph,opts){return {k:k,l:l,t:t||"text",ph:ph||"",opts:opts};}
@@ -451,13 +469,10 @@ fields:[
   F("accept","What we're accepting if we go your way (one per line)","area","A vendor dependency on our second-most-used surface")
 ],
 doc:function(p,f){
-  var opts=list(f.options,["Option — the case for it — the cost"]);
-  var body=opts.map(function(o){
-    var parts=o.split("—").map(function(s){return s.trim();});
-    var out="### "+(parts[0]||o)+"\n";
-    if(parts[1])out+="**For:** "+parts[1]+"\n\n";
-    if(parts[2])out+="**Cost:** "+parts[2]+"\n";
-    return out;
+  var body=cols(f.options,["the option","the case for it","the cost"]).map(function(c){
+    return "### "+cell(c,0,"the option")+"\n"+
+    "**For:** "+cell(c,1,"the case for it")+"\n\n"+
+    "**Cost:** "+cell(c,2,"the cost")+"\n";
   }).join("\n");
   return "# Decision brief: "+B(f.decision,"the decision")+"\n\n"+
   "**Decider:** "+B(f.decider,"who decides")+"  \n"+
@@ -481,12 +496,10 @@ fields:[
   F("check","How we'll check in","text","15 minutes every other Monday, numbers on screen")
 ],
 doc:function(p,f){
-  var gs=list(f.goals,["Goal — how you'll measure it — owner"]);
-  var body=gs.map(function(g,i){
-    var parts=g.split("—").map(function(s){return s.trim();});
-    return "### Goal "+(i+1)+": "+(parts[0]||g)+"\n"+
-      "**Measure:** "+(parts[1]||"[how you will measure it]")+"  \n"+
-      "**Owner:** "+(parts[2]||"[owner]")+"\n";
+  var body=cols(f.goals,["the goal","how you'll measure it","owner"]).map(function(c,i){
+    return "### Goal "+(i+1)+": "+cell(c,0,"the goal")+"\n"+
+      "**Measure:** "+cell(c,1,"how you'll measure it")+"  \n"+
+      "**Owner:** "+cell(c,2,"owner")+"\n";
   }).join("\n");
   return "# "+B(f.quarter,"quarter")+" goals — "+p.co+"\n\n"+
   "> "+B(f.theme,"the one-line theme for the quarter")+"\n\n"+
@@ -641,10 +654,10 @@ fields:[
   F("by","Reply by","text","September 5")
 ],
 doc:function(p,f){
-  var name=B(f.name,"candidate name");
+  var name=B(f.name,"candidate name"), fn=fname(f.name,"candidate name");
   return "# Offer of employment — "+B(f.role,"role")+"\n"+
   today()+"\n\n"+
-  p.v.hi(name.split(" ")[0])+"\n\n"+
+  p.v.hi(fn)+"\n\n"+
   "We'd like you to join "+p.co+" as "+B(f.role,"role")+". Everyone who met you wanted to work with you, and that's the whole basis of this offer.\n\n"+
   "## The offer\n"+
   "- **Role:** "+B(f.role,"role")+", reporting to "+B(f.mgr,"manager")+"\n"+
@@ -671,7 +684,7 @@ fields:[
   F("win","What they should have shipped by Friday","text","One merged pull request that reaches production, however small")
 ],
 doc:function(p,f){
-  var name=B(f.name,"new hire"),fn=name.split(" ")[0],buddy=B(f.buddy,"buddy"),mgr=B(f.mgr,"manager");
+  var name=B(f.name,"new hire"),fn=fname(f.name,"new hire"),buddy=B(f.buddy,"buddy"),mgr=B(f.mgr,"manager");
   return "# First week: "+name+", "+B(f.role,"role")+"\n"+
   "Starts "+B(f.start,"start date")+" · Manager: "+mgr+" · Buddy: "+buddy+"\n\n"+
   "The goal of week one is not for "+fn+" to be productive. It's for "+fn+" to know how things work here, "+
@@ -740,10 +753,9 @@ fields:[
   F("goals","Goals for next period (one per line: Goal — how we'll measure it)","area","Hand off ticket ownership — under 30% of tickets closed personally by December\nWeekly written update — lands every Friday for 12 straight weeks")
 ],
 doc:function(p,f){
-  var name=B(f.name,"employee"),fn=name.split(" ")[0];
-  var gs=list(f.goals,["Goal — how we'll measure it"]).map(function(g){
-    var parts=g.split("—").map(function(s){return s.trim();});
-    return "- **"+(parts[0]||g)+"** — measured by "+(parts[1]||"[the measure]");
+  var name=B(f.name,"employee"),fn=fname(f.name,"employee");
+  var gs=cols(f.goals,["the goal","how we'll measure it"]).map(function(c){
+    return "- **"+cell(c,0,"the goal")+"** — measured by "+cell(c,1,"how we'll measure it");
   }).join("\n");
   return "# Performance review: "+name+"\n"+
   B(f.role,"role")+" · "+B(f.period,"review period")+" · Reviewer: "+p.me+"\n\n"+
@@ -1269,6 +1281,722 @@ doc:function(p,f){
   "- A real name signs every reply. \"The team\" reads as nobody\n"+
   "- Never mention a discount or a refund in public\n"+
   "- If you're annoyed, write it, then send it tomorrow";
+}}
+
+]}
+,
+{
+code:"SLS", name:"Sales",
+jobs:[
+
+{id:"cold", name:"Cold outreach", desc:"A first email worth answering, plus the two follow-ups and the one that closes the loop.",
+fields:[
+  F("who","Who you're writing to","text","Ops director at a 60-truck regional carrier"),
+  F("trigger","Why now — what you noticed about them","text","They posted three dispatcher roles in two months"),
+  F("problem","The problem you think they have","text","Routes are being rebuilt by hand every morning and it doesn't scale with headcount"),
+  F("proof","Your proof, in one line","text","Halloran Transport cut empty miles 18% in a quarter without hiring"),
+  F("ask","The ask","text","20 minutes next week to look at one of your routes"),
+  F("sender","Who it's from (leave blank for you)","text","")
+],
+doc:function(p,f){
+  var me=S(f.sender)||p.me, trigger=B(f.trigger,"what you noticed about them");
+  var problem=B(f.problem,"the problem you think they have");
+  return "# Cold outreach — "+B(f.who,"who you're writing to")+"\n"+
+  p.co+" · Voice: "+p.v.tone+" · "+today()+"\n\n"+
+  "## Subject lines\n"+
+  "1. "+trigger.split(",")[0]+"\n"+
+  "2. Question about your routing\n"+
+  "3. [Their company] + "+p.co+"\n\n"+
+  "Lowercase, short, no colon. A subject line that looks like marketing gets read as marketing.\n\n"+
+  "---\n\n"+
+  "## Email 1 — the opener\n\n"+
+  "Hi [First name],\n\n"+
+  trigger+" — which usually means "+lower(problem)+".\n\n"+
+  B(f.proof,"your proof in one line")+".\n\n"+
+  B(f.ask,"the ask")+"?\n\n"+
+  me+"\n"+p.co+" · "+p.site+"\n\n"+
+  "Under 90 words. One question mark. No attachment, no deck, no calendar link in the first email.\n\n"+
+  "---\n\n"+
+  "## Email 2 — four working days later\n\n"+
+  "**Subject:** Re: [same thread]\n\n"+
+  "Hi [First name],\n\n"+
+  "One more thing that might be more useful than my last note: [the specific number, benchmark or teardown you can give away free].\n\n"+
+  "Happy to send it over whether or not we ever talk.\n\n"+
+  me+"\n\n"+
+  "---\n\n"+
+  "## Email 3 — a week after that\n\n"+
+  "**Subject:** Re: [same thread]\n\n"+
+  "Hi [First name],\n\n"+
+  "Is "+lower(problem)+" actually a problem you're trying to solve this year? A no is genuinely fine — it just tells me to stop writing.\n\n"+
+  me+"\n\n"+
+  "---\n\n"+
+  "## Email 4 — closing the loop\n\n"+
+  "**Subject:** Closing the loop\n\n"+
+  "Hi [First name],\n\n"+
+  "I'll leave this here. If routing comes up next year, you know where I am.\n\n"+
+  me+"\n\n"+
+  "Send it and mean it. The breakup email that's really a fifth pitch is the one that gets people marking you as spam.\n\n"+
+  "---\n\n"+
+  "## Before you send\n"+
+  "- The first line has to be about them. If it's about you, rewrite it\n"+
+  "- Cut every sentence that would survive being sent to anyone else\n"+
+  "- One ask. Three asks is zero asks\n"+
+  "- Plain text, no logo, no tracking pixel on a first touch";
+}},
+
+{id:"discovery", name:"Discovery call guide", desc:"Questions that find out whether there's a real problem here, and a close that ends with a date.",
+fields:[
+  F("mins","Length in minutes","text","30"),
+  F("who","Who you're talking to","text","Ops director, 60-truck carrier, came in from the benchmark report"),
+  F("learn","What you must learn on this call (one per line)","area","What does the dispatcher's morning actually look like\nWhat have they already tried\nWho else has to say yes"),
+  F("probe","Problems to probe (one per line)","area","Empty miles they can't see\nRoute building by hand every morning\nDrivers rejecting routes"),
+  F("next","The next step you want","text","A working session with one week of their real route data")
+],
+doc:function(p,f){
+  var mins=parseInt(S(f.mins),10); if(!mins||mins<15)mins=30;
+  var learn=list(f.learn,["what you must learn"]);
+  var probe=list(f.probe,["the problem to probe"]);
+  return "# Discovery call — "+B(f.who,"who you're talking to")+"\n"+
+  p.co+" · "+mins+" minutes · "+today()+"\n\n"+
+  "## What this call is for\n"+
+  "Finding out whether there's a real problem worth solving here. Not a demo. If you spend more than five minutes talking, the call has gone wrong.\n\n"+
+  "## Timing\n"+
+  "- **"+clock(0)+"–"+clock(2)+"** — Why you're here, how long it'll take, what happens after\n"+
+  "- **"+clock(2)+"–"+clock(mins-8)+"** — Their situation, in their words\n"+
+  "- **"+clock(mins-8)+"–"+clock(mins-3)+"** — What "+p.co+" does, but only against what they told you\n"+
+  "- **"+clock(mins-3)+"–"+clock(mins)+"** — Next step, with a date on it\n\n"+
+  "## Open\n"+
+  "> \"Before I say anything about us — tell me what a normal morning looks like for your team right now.\"\n\n"+
+  "Then be quiet for two full minutes.\n\n"+
+  "## What you must learn\n"+
+  learn.map(function(l){return "- "+l+"\n  - Follow-up: \"What happens today when that goes wrong?\"";}).join("\n")+"\n\n"+
+  "## Problems to probe\n"+
+  probe.map(function(x){
+    return "### "+x+"\n"+
+    "- \"How do you handle that today?\"\n"+
+    "- \"What does it cost you when it goes wrong — hours, money, or people?\"\n"+
+    "- \"Have you tried to fix it before? What happened?\"\n";
+  }).join("\n")+"\n"+
+  "## The four things you need before you hang up\n"+
+  "1. **The problem, in their words** — write down the sentence they actually said\n"+
+  "2. **The cost of not fixing it** — a number, or at least a story\n"+
+  "3. **Who else has to agree** — and what they care about, which is usually something different\n"+
+  "4. **When they need it working** — a date, or an honest \"no rush\", which is also an answer\n\n"+
+  "## If they ask about price\n"+
+  "Give the range straight away. \"[Your range], depending on fleet size — I'd rather tell you now than after we've both spent an hour.\" "+
+  "Dodging it is the fastest way to lose a serious buyer.\n\n"+
+  "## Close\n"+
+  "> \"From what you've said, the piece that matters is [their words]. The useful next step is "+B(f.next,"the next step you want")+". Does [day] or [day] work?\"\n\n"+
+  "A call that ends without a date on the calendar is a call you'll be chasing for three weeks.\n\n"+
+  "## Write it up within 10 minutes\n"+
+  "Their sentence, the cost, the other names, the date. In the CRM, not in your head.";
+}},
+
+{id:"proposal", name:"Proposal", desc:"What you'll do, what it costs, what's not included, and the date you need an answer.",
+fields:[
+  F("client","Client","text","Halloran Transport"),
+  F("contact","Who it's addressed to","text","Rachel Vance, VP Operations"),
+  F("problem","Their problem, in their words","text","\"We're running trucks half empty and I can't tell you which ones\""),
+  F("scope","What you'll do (one per line)","area","Import and clean 12 months of route history\nStand up the empty-mile dashboard for all 40 trucks\nTwo training sessions for dispatchers, recorded"),
+  F("out","What's not included (one per line)","area","Billing and compliance workflows\nCustom integrations with your TMS"),
+  F("price","Price","text","$2,400/month, 12-month term, billed quarterly"),
+  F("timeline","Timeline (one per line)","area","Week 1 — data import and validation\nWeek 2 — dashboard live, dispatchers trained\nWeek 6 — first results review"),
+  F("by","Answer needed by","text","September 15")
+],
+doc:function(p,f){
+  return "# Proposal for "+B(f.client,"client")+"\n"+
+  "Prepared by "+p.me+", "+p.role+" at "+p.co+" · "+today()+"\n\n"+
+  "## What you told us\n"+
+  "> "+B(f.problem,"their problem in their words")+"\n\n"+
+  "Everything below exists to fix that one thing.\n\n"+
+  "## What we'll do\n"+bul(f.scope,["the first piece of work"])+"\n\n"+
+  "## What we won't do\n"+bul(f.out,["what's out of scope"])+"\n\n"+
+  "Saying this plainly now is cheaper than discovering it in month three.\n\n"+
+  "## Timeline\n"+bul(f.timeline,["the first milestone and when it lands"])+"\n\n"+
+  "## Price\n"+
+  B(f.price,"price and terms")+"\n\n"+
+  "No setup fee and no per-seat charge — the number above is the number.\n\n"+
+  "## What we need from you\n"+
+  "- One person who owns this on your side and can make decisions\n"+
+  "- Access to your route exports in week one\n"+
+  "- [Anything else that would block the timeline]\n\n"+
+  "## How we'll know it worked\n"+
+  "[The measure you'll both look at, and when — make it a number, not a feeling]\n\n"+
+  "## Next step\n"+
+  "If this looks right, reply and we'll send the agreement. We're holding the start date until "+B(f.by,"the answer-by date")+".\n\n"+
+  "If it doesn't look right, tell me which part and I'll rework it — that's a normal thing to say, not an awkward one.\n\n"+
+  p.v.bye+"\n"+p.me+" · "+p.site;
+}},
+
+{id:"objections", name:"Objection handling", desc:"What they mean, what to say, and what not to say — for the five you hear every week.",
+fields:[
+  F("objections","Objections you actually hear (one per line)","area","It's too expensive\nWe're already using a TMS\nOur dispatchers won't use it\nNot this budget year"),
+  F("price","What justifies your price","text","One avoided empty mile per truck per week pays for it"),
+  F("rival","Who you're usually up against","text","Enterprise TMS suites, and spreadsheets"),
+  F("proof","Proof you can reach for (one per line)","area","Halloran: 18% fewer empty miles in a quarter\n61 fleets live, median setup two days")
+],
+doc:function(p,f){
+  var objs=list(f.objections,["the objection you hear most"]);
+  var body=objs.map(function(o){
+    return "### \""+o+"\"\n\n"+
+    "**What it usually means:** [Nine times out of ten it's one of: no urgency, no budget, no authority, or they don't believe you. Write down which one it is here.]\n\n"+
+    "**Ask first:** \"Say more about that — is it the number itself, or the timing?\"\n\n"+
+    "**Then say:** ["+first(f.proof,"the proof point that answers this")+"]\n\n"+
+    "**Don't say:** anything that starts with \"Actually…\" or ends with a discount you weren't asked for.\n";
+  }).join("\n");
+  return "# Objection handling — "+p.co+"\n"+
+  "Usually up against: "+B(f.rival,"the alternative")+" · "+today()+"\n\n"+
+  "## The rule\n"+
+  "Ask before you answer. Almost every objection is a shorthand for something else, and answering the shorthand loses the deal politely.\n\n"+
+  "## The ones you hear\n"+body+"\n"+
+  "## \"It's too expensive\" — the one that matters\n"+
+  B(f.price,"what justifies your price")+"\n\n"+
+  "Never discount to close. A price that moves because someone pushed tells them the first number wasn't real, and they'll push on everything else too. "+
+  "If you must move, take something out of the scope so the trade is visible.\n\n"+
+  "## \"Send me some information\"\n"+
+  "This is usually a soft no. \"Happy to — what would you want it to answer?\" If they can't say, they're being kind rather than interested, and you can stop.\n\n"+
+  "## \"We need to think about it\"\n"+
+  "\"Of course. What's the part you're thinking about?\" Then wait. The answer is the actual objection, and it's the first true thing they've said in ten minutes.\n\n"+
+  "## Proof to reach for\n"+bul(f.proof,["a number, a name, or a result"])+"\n\n"+
+  "## When to walk\n"+
+  "No problem, no budget, or no one who can say yes. Say so warmly and leave the door open — a clean no this quarter beats a fake maybe for six months.";
+}},
+
+{id:"recap", name:"Deal recap email", desc:"The note you send within an hour of a good call, so the deal doesn't quietly die.",
+fields:[
+  F("contact","Who it goes to","text","Rachel Vance"),
+  F("said","What they said they need (one per line)","area","See empty miles per truck without building a report\nSomething dispatchers will actually open\nLive before the winter contract season"),
+  F("showed","What you showed them","text","The empty-mile dashboard on a fleet their size"),
+  F("open","Open questions (one per line)","area","Whether your TMS export includes loaded vs total miles per leg"),
+  F("next","The next step and its date","text","Working session with your route data, Thursday September 11 at 10"),
+  F("price","Price discussed","text","$2,400/month on a 12-month term")
+],
+doc:function(p,f){
+  var name=B(f.contact,"their name"), fn=fname(f.contact,"their name");
+  return "# Recap email — "+name+"\n"+
+  p.co+" · Send within the hour · "+today()+"\n\n"+
+  "## The email\n\n"+
+  "**Subject:** Recap + next step\n\n"+
+  p.v.hi(fn)+"\n\n"+
+  "Thanks for the time today. Writing down what I heard so you can correct me if I've got it wrong.\n\n"+
+  "**What you need:**\n"+bul(f.said,["what they said they need — their words"])+"\n\n"+
+  "**What we looked at:** "+B(f.showed,"what you showed them")+"\n\n"+
+  "**Still open:**\n"+bul(f.open,["the open question"])+"\n\n"+
+  "**Price:** "+B(f.price,"price discussed")+"\n\n"+
+  "**Next:** "+B(f.next,"the next step and its date")+"\n\n"+
+  "If any of that is off, just reply on this line and I'll fix it.\n\n"+
+  p.v.bye+"\n"+p.me+" · "+p.co+"\n\n"+
+  "---\n\n"+
+  "## Why this email exists\n"+
+  "It gets forwarded. The person who wasn't on the call — the one who actually signs — reads this and nothing else. "+
+  "Write it so it makes sense to them cold.\n\n"+
+  "## Internal note for the CRM\n"+
+  "- **Problem, their words:** "+first(f.said,"their sentence")+"\n"+
+  "- **Cost of not fixing it:** [what it costs them today]\n"+
+  "- **Who else says yes:** [names and what they care about]\n"+
+  "- **Timing:** [their date, and what's driving it]\n"+
+  "- **Risk:** [the thing most likely to kill this]";
+}},
+
+{id:"pipeline", name:"Pipeline review", desc:"An honest forecast: what's real, what's hope, and what you're doing about the gap.",
+fields:[
+  F("period","Period","text","September 2026"),
+  F("target","Target","text","$18,000 in new monthly recurring revenue"),
+  F("deals","Deals (one per line: Name — value — stage — next step — date)","area","Halloran Transport — $2,400/mo — proposal sent — decision meeting — Sept 15\nCortez Hauling — $1,800/mo — discovery done — working session — Sept 9\nBrightline Freight — $3,200/mo — first call — proposal — Sept 22"),
+  F("risk","What's at risk and why (one per line)","area","Brightline's champion is new and hasn't got budget authority yet"),
+  F("gap","What you'll do about the gap","text","Twenty new conversations from the benchmark report list this week"),
+  F("help","Where you need help","area","A reference call from Halloran for Cortez")
+],
+doc:function(p,f){
+  var rows=cols(f.deals,["deal name","value","stage","next step","date"]).map(function(c){
+    return "### "+cell(c,0,"deal name")+"\n"+
+    "**Value:** "+cell(c,1,"value")+" · **Stage:** "+cell(c,2,"stage")+"\n\n"+
+    "**Next step:** "+cell(c,3,"next step")+" by "+cell(c,4,"date")+"\n";
+  }).join("\n");
+  return "# Pipeline — "+B(f.period,"period")+"\n"+
+  p.co+" · "+p.me+" · "+today()+"\n\n"+
+  "## Target\n"+B(f.target,"the target")+"\n\n"+
+  "## The deals\n"+rows+"\n"+
+  "## What's at risk\n"+bul(f.risk,["the deal that's wobbling, and why"])+"\n\n"+
+  "A deal with no next step and no date is not in the pipeline. It's a hope, and hopes belong in a different list.\n\n"+
+  "## The gap, and what closes it\n"+
+  B(f.gap,"what you'll do about the gap")+"\n\n"+
+  "## Where I need help\n"+bul(f.help,["what you need from the rest of the team"])+"\n\n"+
+  "## Rules for this list\n"+
+  "- Every deal has a next step with a date, or it moves to closed-lost\n"+
+  "- Stage is set by what the buyer has done, not by how the call felt\n"+
+  "- Nothing forecast for this period without a decision date from them";
+}}
+
+]}
+,
+{
+code:"FIN", name:"Finance",
+jobs:[
+
+{id:"monthly", name:"Monthly numbers memo", desc:"The month in numbers, with the variances explained by someone who knows why.",
+fields:[
+  F("month","Month","text","August 2026"),
+  F("revenue","Revenue","text","$84,200 — up 9% on July, $3,800 under plan"),
+  F("costs","Costs","text","$212,000 — $14,000 over plan, mostly cloud"),
+  F("cash","Cash at month end","text","$2,080,000"),
+  F("heads","Headcount","text","14, plus two open roles"),
+  F("variance","What moved and why (one per line: Line — amount — why)","area","Cloud — $14,000 over — the nightly optimization run doubled when Halloran came on\nRevenue — $3,800 under — two small fleets churned on price\nRecruiting — $9,000 under — the engineering hire slipped a month"),
+  F("watch","What to watch next month","text","Cloud cost per fleet — if it stays flat we have a margin problem at 100 fleets")
+],
+doc:function(p,f){
+  var vs=cols(f.variance,["the line that moved","amount","why"]).map(function(c){
+    return "- **"+cell(c,0,"the line that moved")+"** "+cell(c,1,"amount")+" — "+cell(c,2,"why");
+  }).join("\n");
+  return "# "+B(f.month,"month")+" numbers — "+p.co+"\n"+
+  "Prepared by "+p.me+" · "+today()+"\n\n"+
+  "## The month\n"+
+  "- **Revenue:** "+B(f.revenue,"revenue, with the change and the variance to plan")+"\n"+
+  "- **Costs:** "+B(f.costs,"costs, with the variance to plan")+"\n"+
+  "- **Cash at month end:** "+B(f.cash,"cash at month end")+"\n"+
+  "- **Headcount:** "+B(f.heads,"headcount")+"\n\n"+
+  "## What moved, and why\n"+vs+"\n\n"+
+  "Every variance above has a reason attached. A number with no explanation isn't reporting, it's a screenshot.\n\n"+
+  "## What I'm watching\n"+B(f.watch,"the thing to watch next month")+"\n\n"+
+  "## Decisions this raises\n"+
+  "- [The decision the numbers are pushing you toward, and who makes it]\n"+
+  "- [What you'd need to see before making it]\n\n"+
+  "## Housekeeping\n"+
+  "Books closed [date]. Anything that lands late gets booked to "+B(f.month,"this month")+" and restated here next time, flagged.\n\n"+
+  "— "+p.me+", "+p.role;
+}},
+
+{id:"budget", name:"Annual budget memo", desc:"Next year's plan with the assumptions written down, so you can tell later which one was wrong.",
+fields:[
+  F("year","Year","text","2027"),
+  F("revplan","Revenue plan","text","$1.6M, from $1.0M — 61 fleets to 110"),
+  F("heads","Headcount plan (one per line: Role — when — cost)","area","Backend engineer — January — $195,000 loaded\nCustomer success manager — March — $110,000 loaded\nSecond CSM — August — $110,000 loaded"),
+  F("items","Big line items (one per line: Item — amount — why)","area","Cloud — $180,000 — scales with fleets, roughly $150 per fleet per month\nSOC 2 audit — $45,000 — three deals stalled on it this year\nConferences — $30,000 — two shows, both where fleet ops buyers actually go"),
+  F("assume","Assumptions (one per line)","area","Churn stays under 1.5% monthly\nWe close 1 in 5 qualified fleets\nNo price increase before July"),
+  F("not","What we're not funding (one per line)","area","A second product line\nPaid advertising beyond $3k/month tests")
+],
+doc:function(p,f){
+  var heads=cols(f.heads,["the role","when they start","loaded cost"]).map(function(c){
+    return "- **"+cell(c,0,"the role")+"** — starts "+cell(c,1,"when they start")+", "+cell(c,2,"loaded cost");
+  }).join("\n");
+  var items=cols(f.items,["the line item","amount","why"]).map(function(c){
+    return "- **"+cell(c,0,"the line item")+"** — "+cell(c,1,"amount")+" — "+cell(c,2,"why");
+  }).join("\n");
+  return "# "+B(f.year,"year")+" budget — "+p.co+"\n"+
+  p.me+", "+p.role+" · "+today()+"\n\n"+
+  "## The plan in one line\n"+
+  B(f.revplan,"the revenue plan and where it comes from")+"\n\n"+
+  "## Hiring\n"+heads+"\n\n"+
+  "Start dates are the expensive part. A role that starts in January costs twice what the same role costs starting in July, and it's the line most often quietly wrong.\n\n"+
+  "## Big line items\n"+items+"\n\n"+
+  "## What this assumes\n"+bul(f.assume,["the assumption the plan rests on"])+"\n\n"+
+  "These are the numbers to argue with. If one of them is wrong the plan is wrong, and it's better to find out in the meeting than in June.\n\n"+
+  "## What we're not funding\n"+bul(f.not,["what you're deliberately not funding"])+"\n\n"+
+  "## How we'll steer\n"+
+  "- Re-forecast at the end of each quarter, not each month\n"+
+  "- Any single spend over [threshold] that isn't in this document needs a yes from "+p.me+"\n"+
+  "- If revenue is 15% behind plan at the half year, hiring pauses until it isn't\n\n"+
+  "## Where this could go wrong\n"+
+  "- [The assumption most likely to break, and what you'd do about it]\n"+
+  "- [The cost most likely to run away from you]";
+}},
+
+{id:"pricing", name:"Pricing change memo", desc:"The internal memo and the customer-facing paragraph, so the story is the same in both.",
+fields:[
+  F("change","What's changing","text","Per-truck pricing goes from $38 to $44 a month"),
+  F("why","Why","text","Cloud cost per fleet has risen 40% since we set the price two years ago, and the product does considerably more"),
+  F("who","Who's affected","text","All fleets on the standard plan — 54 of 61 accounts"),
+  F("when","Effective","text","January 1, 2027 for new customers, April 1 for existing"),
+  F("grand","Who's protected, and for how long","text","Anyone on an annual term keeps their rate until renewal"),
+  F("comms","How they'll hear it","text","Email from me 90 days ahead, then a reminder at 30 days"),
+  F("risk","What you'll do if people leave","text","Anyone who asks gets one year at the old rate, no negotiation beyond that")
+],
+doc:function(p,f){
+  return "# Pricing change — "+B(f.change,"what's changing")+"\n"+
+  p.co+" · Internal · "+p.me+" · "+today()+"\n\n"+
+  "## The change\n"+B(f.change,"what's changing")+", effective "+B(f.when,"effective date")+".\n\n"+
+  "## Why now\n"+B(f.why,"the reason")+"\n\n"+
+  "## Who it touches\n"+B(f.who,"who's affected")+"\n\n"+
+  "**Protected:** "+B(f.grand,"who's protected and for how long")+"\n\n"+
+  "## How they'll hear it\n"+B(f.comms,"how and when they'll be told")+"\n\n"+
+  "Nobody finds out from an invoice. A surprise on a bill costs more in trust than the increase earns in revenue.\n\n"+
+  "## If people push back\n"+B(f.risk,"what you'll do if people push back")+"\n\n"+
+  "Decide this now, in writing, so five people don't improvise five different answers.\n\n"+
+  "---\n\n"+
+  "## The customer-facing version — use these words\n\n"+
+  p.v.hi("[First name]")+"\n\n"+
+  "I'm writing with 90 days' notice: "+lower(B(f.change,"what's changing"))+", starting "+B(f.when,"effective date")+".\n\n"+
+  B(f.why,"the reason")+"\n\n"+
+  B(f.grand,"who's protected and for how long")+".\n\n"+
+  "If this changes things on your side, reply to this email and we'll talk it through — you'll get me, not a form.\n\n"+
+  p.v.bye+"\n"+p.me+", "+p.role+" at "+p.co+"\n\n"+
+  "---\n\n"+
+  "## Rules for the rollout\n"+
+  "- One reason, stated once. A list of five justifications reads as a company that isn't sure\n"+
+  "- No \"to serve you better\". Say the cost went up, because it did\n"+
+  "- Everyone customer-facing gets this memo before the first email goes out";
+}},
+
+{id:"runway", name:"Cash and runway note", desc:"Months of runway from the actual numbers, the outflows that will surprise you, and the line where you act.",
+fields:[
+  F("cash","Cash on hand","text","$2,100,000"),
+  F("burn","Monthly costs","text","$212,000"),
+  F("rev","Monthly revenue","text","$84,200"),
+  F("outflows","Big outflows coming (one per line: What — when — amount)","area","SOC 2 audit — November — $45,000\nAnnual insurance — January — $28,000"),
+  F("plan","What you'd cut first if you had to (one per line)","area","Conference budget and both shows\nPause the second CSM hire"),
+  F("line","The line where you act","text","Twelve months of runway — at that point we either raise or cut, no third option")
+],
+doc:function(p,f){
+  var cash=money(f.cash), burn=money(f.burn), rev=money(f.rev);
+  var math;
+  if(cash===null||burn===null){
+    math="**Months of runway:** [fill in cash on hand and monthly costs as plain numbers and this calculates itself]";
+  }else{
+    var net=burn-(rev||0);
+    if(net<=0){
+      math="**Months of runway:** revenue covers costs — you're not burning. Net monthly: **+"+fmt(Math.abs(net))+"**.\n\n"+
+        "Runway stops being the number that matters. Watch the months where costs step up instead.";
+    }else{
+      var months=cash/net;
+      math="**Net burn:** "+fmt(net)+" a month  \n"+
+        "**Months of runway:** **"+(Math.floor(months*10)/10)+"** — that's "+fmt(cash)+" divided by "+fmt(net)+"\n\n"+
+        "That figure assumes revenue and costs both stay flat, which they won't. Treat it as the optimistic end.";
+    }
+  }
+  return "# Cash and runway — "+p.co+"\n"+
+  "As at "+today()+" · "+p.me+"\n\n"+
+  "## Where we are\n"+
+  "- **Cash on hand:** "+B(f.cash,"cash on hand")+"\n"+
+  "- **Monthly costs:** "+B(f.burn,"monthly costs")+"\n"+
+  "- **Monthly revenue:** "+B(f.rev,"monthly revenue")+"\n\n"+
+  math+"\n\n"+
+  "## Outflows that aren't in the monthly number\n"+
+  cols(f.outflows,["what it is","when","amount"]).map(function(c){
+    return "- **"+cell(c,0,"what it is")+"** — "+cell(c,1,"when")+" — "+cell(c,2,"amount");
+  }).join("\n")+"\n\n"+
+  "These are what turn a comfortable number into an uncomfortable quarter. Annual renewals, audits and tax are the usual three.\n\n"+
+  "## The line where we act\n"+B(f.line,"the runway number that triggers a decision")+"\n\n"+
+  "Deciding this while things are calm is the whole point. Nobody makes a good cut with three months left.\n\n"+
+  "## What we'd cut first\n"+num(f.plan,["the first thing you'd cut"])+"\n\n"+
+  "In that order, and not a week later than the trigger above.";
+}},
+
+{id:"collections", name:"Late invoice sequence", desc:"Three emails and a call, firm and unembarrassed, ending somewhere you decided in advance.",
+fields:[
+  F("customer","Customer","text","Cortez Hauling"),
+  F("contact","Who you're writing to","text","Marisol Cortez"),
+  F("invoice","Invoice","text","INV-2088"),
+  F("amount","Amount","text","$7,200"),
+  F("due","Due date","text","August 1"),
+  F("late","Days late","text","24"),
+  F("stop","What happens if it isn't paid","text","Account moves to read-only at 60 days, and we'd rather it didn't")
+],
+doc:function(p,f){
+  var name=B(f.contact,"their name"), fn=fname(f.contact,"their name"), amt=B(f.amount,"amount"), inv=B(f.invoice,"invoice number");
+  return "# Collections — "+B(f.customer,"customer")+", "+inv+"\n"+
+  amt+" · due "+B(f.due,"due date")+" · "+B(f.late,"days")+" days late · "+today()+"\n\n"+
+  "## Email 1 — the assumption of good faith\n\n"+
+  "**Subject:** "+inv+" — "+amt+"\n\n"+
+  p.v.hi(fn)+"\n\n"+
+  inv+" for "+amt+" was due "+B(f.due,"due date")+" and I don't have it marked as paid. "+
+  "Most likely it's stuck somewhere in approvals — can you tell me where it is?\n\n"+
+  "Copy attached in case it's easier to re-send than to find.\n\n"+
+  p.v.bye+"\n"+p.me+"\n\n"+
+  "---\n\n"+
+  "## Email 2 — a week later, add the person who pays\n\n"+
+  "**Subject:** Re: "+inv+" — "+amt+"\n\n"+
+  p.v.hi(fn)+"\n\n"+
+  "Following up on "+inv+". Copying [accounts payable contact] in case that's the faster route.\n\n"+
+  "If there's a problem with the invoice itself, tell me and I'll fix it today. If there's a problem with timing, tell me that too — we can work with it, we just can't work with silence.\n\n"+
+  p.v.bye+"\n"+p.me+"\n\n"+
+  "---\n\n"+
+  "## Email 3 — name the consequence, once\n\n"+
+  "**Subject:** "+inv+" — what happens next\n\n"+
+  p.v.hi(fn)+"\n\n"+
+  inv+" is now "+B(f.late,"days")+" days late. "+B(f.stop,"what happens if it isn't paid")+".\n\n"+
+  "I'd much rather sort this out. Reply with a date you can pay by — any realistic date — and I'll hold everything until then.\n\n"+
+  p.v.bye+"\n"+p.me+", "+p.role+"\n\n"+
+  "---\n\n"+
+  "## The call — make it after email 2, not instead of it\n\n"+
+  "> \""+fn+", I'm calling about "+inv+". It's "+B(f.late,"days")+" days out and I wanted to talk to a person rather than keep emailing. What's it going to take to get it paid?\"\n\n"+
+  "Then stop talking. Whoever speaks next usually names a date.\n\n"+
+  "---\n\n"+
+  "## Rules\n"+
+  "- Chase on a schedule, not on a mood. Day 1 late, day 7, day 14, then the call\n"+
+  "- Never apologise for asking to be paid for work you did\n"+
+  "- Never threaten anything you haven't decided to actually do\n"+
+  "- Log every promised date. A promise that slips twice is a different conversation";
+}},
+
+{id:"spend", name:"Spend approval policy", desc:"Who can spend what, without a form for a $40 tool or a free-for-all on a $40,000 one.",
+fields:[
+  F("tiers","Thresholds (one per line: Amount — who approves)","area","Under $200 — nobody, just buy it and note it\n$200 to $2,000 — your manager, in writing, same week\nOver $2,000 — Dana, before you commit"),
+  F("subs","Recurring subscriptions rule","text","Anything that renews needs an owner and a renewal date in the tools sheet — no exceptions, whatever it costs"),
+  F("travel","Travel","text","Book your own, economy, cheapest sensible option. No pre-approval under $1,500"),
+  F("expenses","Expenses","text","Submit within 30 days, paid the following Friday"),
+  F("owner","Who owns this policy","text","Dana, CEO")
+],
+doc:function(p,f){
+  var tiers=cols(f.tiers,["the amount","who approves it"]).map(function(c){
+    return "- **"+cell(c,0,"the amount")+"** — approved by "+cell(c,1,"who approves it");
+  }).join("\n");
+  return "# Spend approval — "+p.co+"\n"+
+  "Owner: "+B(f.owner,"owner")+" · Effective "+today()+"\n\n"+
+  "## The principle\n"+
+  "Spend company money like it's your own and you're a bit tight. That covers 95% of cases. The rest is below.\n\n"+
+  "## Thresholds\n"+tiers+"\n\n"+
+  "Approval is about the size of the mistake, not about trust. Nobody needs permission to buy a keyboard.\n\n"+
+  "## Anything that renews\n"+B(f.subs,"the rule for recurring subscriptions")+"\n\n"+
+  "Unwatched subscriptions are where budgets go to die quietly. Every one has a name against it.\n\n"+
+  "## Travel\n"+B(f.travel,"the travel rule")+"\n\n"+
+  "## Expenses\n"+B(f.expenses,"the expense rule")+"\n\n"+
+  "If someone is out of pocket, that's a real cost to them. Pay quickly.\n\n"+
+  "## What always needs a conversation first\n"+
+  "- Anything with a term longer than a year\n"+
+  "- Anything that touches customer data\n"+
+  "- Anything you'd feel odd explaining in an all-hands\n\n"+
+  "## Questions\n"+
+  "Ask "+B(f.owner,"owner")+" before you spend, not after. The answer is usually yes and always faster than an apology.";
+}}
+
+]}
+,
+{
+code:"CS", name:"Customer support",
+jobs:[
+
+{id:"macros", name:"Canned reply set", desc:"Replies for the questions you answer every week — written once, so the fifth answer is as good as the first.",
+fields:[
+  F("area","What area these cover","text","Route import and setup"),
+  F("questions","The questions you keep answering (one per line)","area","Why did my vehicle import fail?\nHow do I add a driver?\nWhy is last week's empty-mile number different from my TMS?"),
+  F("sign","How replies are signed","text","first name, then the team"),
+  F("escalate","When to stop using these and get a human","text","Anything about billing, anything a customer has asked twice, anything with the word cancel in it")
+],
+doc:function(p,f){
+  var qs=list(f.questions,["the question you answer most"]);
+  var body=qs.map(function(q,i){
+    return "### "+(i+1)+". "+q+"\n\n"+
+    "**Subject:** "+q.replace(/\?$/,"")+"\n\n"+
+    "Hi [First name],\n\n"+
+    "[One sentence answering the question directly. The answer goes first, before the explanation.]\n\n"+
+    "[Then the steps, if there are any:]\n"+
+    "1. [Step]\n"+
+    "2. [Step]\n\n"+
+    "[If there's a reason worth knowing, one line of it here — people follow instructions better when they know why.]\n\n"+
+    "If that doesn't sort it, reply here and I'll take a look at your account myself.\n\n"+
+    "[Your first name]  \n"+p.co+"\n";
+  }).join("\n---\n\n");
+  return "# Canned replies — "+B(f.area,"area")+"\n"+
+  p.co+" · Voice: "+p.v.tone+" · Reviewed "+today()+"\n\n"+
+  "## How to use these\n"+
+  "Never paste one unedited. Change at least the first line so it answers what this person actually asked — "+
+  "customers can always tell, and a reply that reads as a form letter turns a small problem into a complaint.\n\n"+
+  "## The replies\n"+body+"\n"+
+  "---\n\n"+
+  "## House style\n"+
+  "- Answer first, explanation second. Nobody reads to the bottom for the answer\n"+
+  "- Say \"I\" when you did something and \"we\" when the company did\n"+
+  "- No \"sorry for the inconvenience\". Say what went wrong and what you're doing\n"+
+  "- Signed by "+B(f.sign,"how replies are signed")+"\n\n"+
+  "## When to stop and get a person\n"+
+  B(f.escalate,"when to escalate to a human")+"\n\n"+
+  "## Keeping this alive\n"+
+  "Any reply you write twice belongs in here. Any reply in here that gets a confused response belongs in the bin — rewrite it that day.";
+}},
+
+{id:"outage", name:"Outage notice", desc:"Status post, in-app banner and customer email for when something is down — plus the update cadence and the all-clear.",
+fields:[
+  F("what","What's broken","text","Overnight route optimization didn't run"),
+  F("who","Who's affected","text","All fleets — this morning's routes are yesterday's"),
+  F("since","Started at","text","02:10 CT"),
+  F("known","What you know so far","text","A database migration locked the jobs table and the run timed out"),
+  F("work","Workaround, if any","text","Yesterday's routes are still valid for depots that haven't changed. Manual re-run available on request"),
+  F("next","Next update at","text","09:30 CT"),
+  F("page","Status page","text","status.meridianfreight.com")
+],
+doc:function(p,f){
+  var what=B(f.what,"what's broken");
+  return "# Outage — "+what+"\n"+
+  "Started "+B(f.since,"start time")+" · "+today()+" · "+p.co+"\n\n"+
+  "## Status page post — publish within 15 minutes\n\n"+
+  "**Investigating — "+B(f.since,"start time")+"**\n\n"+
+  what+". This affects "+B(f.who,"who's affected")+".\n\n"+
+  "We know: "+B(f.known,"what you know so far")+"\n\n"+
+  "Next update by "+B(f.next,"next update time")+", even if there's nothing new to say.\n\n"+
+  "---\n\n"+
+  "## In-app banner — one sentence\n\n"+
+  "> "+what+". We're on it — updates at "+B(f.page,"status page")+".\n\n"+
+  "---\n\n"+
+  "## Email to affected customers\n\n"+
+  "**Subject:** "+what+"\n\n"+
+  p.v.hi("[First name]")+"\n\n"+
+  what+", starting at "+B(f.since,"start time")+". You're getting this because "+lower(B(f.who,"who's affected"))+".\n\n"+
+  "**What we know:** "+B(f.known,"what you know so far")+"\n\n"+
+  "**What you can do now:** "+B(f.work,"the workaround, or say there isn't one")+"\n\n"+
+  "**Next update:** "+B(f.next,"next update time")+", from me, whether or not it's fixed.\n\n"+
+  "I'm sorry — this is the kind of thing you build a routing system to avoid.\n\n"+
+  p.me+", "+p.role+" · "+p.co+"\n\n"+
+  "---\n\n"+
+  "## While it's going on\n"+
+  "- Update on the schedule you promised, even when the update is \"still working on it\"\n"+
+  "- One person writes all the updates. Two voices sound like confusion\n"+
+  "- Never guess at a fix time. \"We don't know yet\" survives being wrong; \"20 minutes\" doesn't\n"+
+  "- Don't say \"a small number of customers\" if it isn't\n\n"+
+  "## The all-clear\n\n"+
+  "**Resolved — [time]**\n\n"+
+  what+" is fixed as of [time]. [What you did.] [What customers should check on their side, if anything.]\n\n"+
+  "A full write-up follows within [two working days] with what happened, why, and what changes so it doesn't happen again.\n\n"+
+  "## The write-up owes people three things\n"+
+  "1. A timeline in plain language\n"+
+  "2. The actual cause, not \"an issue\"\n"+
+  "3. The specific change you've made — dated, and it has to be real";
+}},
+
+{id:"escalation", name:"Escalation path", desc:"Who handles what, how fast, and exactly when to wake someone up.",
+fields:[
+  F("sev","Severity levels (one per line: Level — what it means — response time)","area","Sev 1 — nobody can use the product, or data is wrong — 15 minutes, any hour\nSev 2 — a core feature is broken for some customers — 2 hours in working hours\nSev 3 — annoying but there's a way around it — next working day"),
+  F("tiers","Who handles what (one per line: Level — who)","area","First reply — whoever is on support duty\nAnything technical — on-call engineer\nSev 1, or any customer threatening to leave — Dana"),
+  F("hours","Support hours","text","07:00–19:00 CT weekdays, on-call for Sev 1 outside that"),
+  F("wake","When to wake someone up","text","Sev 1, or a Sev 2 that has been open more than four hours"),
+  F("owner","Who owns this","text","Priya, Customer Success")
+],
+doc:function(p,f){
+  var sev=cols(f.sev,["the level","what it means","response time"]).map(function(c){
+    return "### "+cell(c,0,"the level")+"\n"+
+    "**Means:** "+cell(c,1,"what it means")+"  \n"+
+    "**We respond within:** "+cell(c,2,"response time")+"\n";
+  }).join("\n");
+  return "# Escalation path — "+p.co+"\n"+
+  "Owner: "+B(f.owner,"owner")+" · Support hours: "+B(f.hours,"support hours")+" · "+today()+"\n\n"+
+  "## Severity\n"+
+  "The person who picks up the ticket sets the severity. Getting it wrong upward costs an hour of someone's evening; "+
+  "getting it wrong downward costs a customer.\n\n"+sev+"\n"+
+  "## Who handles what\n"+
+  cols(f.tiers,["what kind of issue","who handles it"]).map(function(c){
+    return "- **"+cell(c,0,"what kind of issue")+"** → "+cell(c,1,"who handles it");
+  }).join("\n")+"\n\n"+
+  "## When to wake someone up\n"+B(f.wake,"when to wake someone up")+"\n\n"+
+  "You will never be told off for escalating something that turned out to be fine. That's the deal, and it holds at 3am.\n\n"+
+  "## What an escalation has to include\n"+
+  "1. What's broken, in one sentence\n"+
+  "2. Who's affected and how many\n"+
+  "3. When it started\n"+
+  "4. What you've already tried\n"+
+  "5. What you need from the person you're waking\n\n"+
+  "Five lines. An escalation that starts with \"quick question\" and no context wastes the first ten minutes.\n\n"+
+  "## Telling the customer\n"+
+  "- Acknowledge inside the response time, even with nothing to report\n"+
+  "- Give a next-update time and hit it\n"+
+  "- The person who picked it up owns it until it closes — no silent handoffs\n\n"+
+  "## After a Sev 1\n"+
+  "Write it up within two working days: timeline, cause, and the one change that makes it less likely. "+
+  "No names, no blame. A path people are afraid to use is a path that doesn't exist.";
+}},
+
+{id:"article", name:"Help-centre article", desc:"One task, done step by step, with the mistakes people actually make.",
+fields:[
+  F("task","The task","text","Import your vehicle list"),
+  F("who","Who this is for","text","A new fleet admin setting up for the first time"),
+  F("before","What they need first (one per line)","area","Admin access to your Meridian account\nA vehicle list with VIN, plate and depot columns"),
+  F("steps","Steps (one per line)","area","Go to Settings, then Vehicles, then Import\nUpload your CSV — the column names don't need to match, you'll map them next\nMap each column and check the preview row before confirming\nConfirm the import and wait for the summary email"),
+  F("wrong","What usually goes wrong (one per line)","area","VINs with a leading apostrophe from Excel — the import skips those rows\nTwo depots with the same name — vehicles land at whichever was created first"),
+  F("time","Roughly how long it takes","text","About 10 minutes for a 50-truck fleet")
+],
+doc:function(p,f){
+  var task=B(f.task,"the task");
+  return "# "+task+"\n"+
+  B(f.time,"roughly how long")+" · "+p.co+" help centre\n\n"+
+  "**Who this is for:** "+B(f.who,"who this is for")+"\n\n"+
+  "## Before you start\n"+bul(f.before,["what they need first"])+"\n\n"+
+  "## Steps\n"+num(f.steps,["the first step — one action per step"])+"\n\n"+
+  "## What usually goes wrong\n"+
+  list(f.wrong,["the mistake people actually make"]).map(function(w){
+    return "**"+w.split("—")[0].trim()+"**\n\n"+
+    (w.indexOf("—")>-1?w.split("—").slice(1).join("—").trim():"[What to do about it.]")+"\n";
+  }).join("\n")+"\n"+
+  "## How you know it worked\n"+
+  "[The thing they'll see on screen when it's done — a count, a green tick, an email.]\n\n"+
+  "## Still stuck?\n"+
+  "Reply to the summary email or write to "+p.site+" — send the file you were importing and we'll look at it directly.\n\n"+
+  "---\n\n"+
+  "## Notes for whoever writes this up\n"+
+  "- One article, one task. If the title needs an \"and\", it's two articles\n"+
+  "- Screenshot every step where the interface isn't obvious, and re-shoot them when the UI changes\n"+
+  "- Write the steps while doing the task, not from memory — memory skips the step everyone gets stuck on\n"+
+  "- If support answers this question anyway, the article is wrong, not the customer";
+}},
+
+{id:"refunds", name:"Refund and credit rules", desc:"What always gets refunded, what never does, and who can decide — so nobody improvises.",
+fields:[
+  F("always","Always refund (one per line)","area","We billed for something they cancelled\nAn outage cost them a working day — credit the month, don't wait to be asked\nThey were charged twice"),
+  F("never","Never refund (one per line)","area","Time already used on an annual term they chose\nUsage they say they forgot about after three invoices"),
+  F("who","Who can decide what","text","Support can credit up to $500 without asking. Above that, Priya. Above $5,000, Dana"),
+  F("speed","How fast","text","Same day, and the customer hears about it before the accounting does"),
+  F("owner","Who owns this","text","Priya, Customer Success")
+],
+doc:function(p,f){
+  return "# Refunds and credits — "+p.co+"\n"+
+  "Owner: "+B(f.owner,"owner")+" · "+today()+"\n\n"+
+  "## The principle\n"+
+  "If we got it wrong, we fix it without being argued into it. If they got it wrong, we're kind about it once and clear about it after that.\n\n"+
+  "## Always refund or credit\n"+bul(f.always,["the case that always gets refunded"])+"\n\n"+
+  "No approval, no escalation, no asking them to prove it. In these cases the money was never really ours.\n\n"+
+  "## Don't refund\n"+bul(f.never,["the case that doesn't get refunded"])+"\n\n"+
+  "## Who decides\n"+B(f.who,"who can approve what")+"\n\n"+
+  "## How fast\n"+B(f.speed,"how fast refunds happen")+"\n\n"+
+  "A refund that takes two weeks costs you the goodwill the refund was supposed to buy.\n\n"+
+  "## How to say yes\n"+
+  "> \"You're right — that shouldn't have happened. I've credited [amount] back to your account today, and you'll see it on [date]. Nothing else you need to do.\"\n\n"+
+  "Don't attach a lecture to a refund. You either give it or you don't.\n\n"+
+  "## How to say no\n"+
+  "> \"I've looked at this properly and I'm not going to be able to refund [what], because [the actual reason, in one sentence]. "+
+  "What I can do is [the real alternative]. I know that's not the answer you wanted.\"\n\n"+
+  "Say no once, mean it, and offer something real. A no that softens under pressure teaches people to push.\n\n"+
+  "## Track them\n"+
+  "Every refund gets a reason code. Three refunds for the same reason is a product bug, not a support cost — and the pattern only shows up if someone writes it down.";
+}},
+
+{id:"cancellation", name:"Cancellation reply", desc:"The reply when someone leaves: make it easy, find out why, and leave the door open without begging.",
+fields:[
+  F("customer","Who's leaving","text","Cortez Hauling"),
+  F("contact","Who wrote in","text","Marisol"),
+  F("reason","The reason they gave","text","Too expensive for a 22-truck fleet"),
+  F("offer","What you can genuinely offer","text","The small-fleet rate at $29 a truck, which we don't advertise"),
+  F("wont","What you won't do","text","Discount below the small-fleet rate, or extend a free period again"),
+  F("data","What happens to their data","text","Full CSV export any time in the next 90 days, then it's deleted"),
+  F("when","When it takes effect","text","End of the current billing month — no early cut-off")
+],
+doc:function(p,f){
+  var fn=fname(f.contact,"their name"), reason=B(f.reason,"the reason they gave");
+  return "# Cancellation — "+B(f.customer,"customer")+"\n"+
+  "Reason given: "+reason+" · "+today()+"\n\n"+
+  "## The reply — send this first\n\n"+
+  "**Subject:** Cancelling your account\n\n"+
+  p.v.hi(fn)+"\n\n"+
+  "Done — your account is cancelled from "+B(f.when,"when it takes effect")+". Nothing else for you to do, and there's no retention call coming.\n\n"+
+  "**Your data:** "+B(f.data,"what happens to their data")+"\n\n"+
+  "One question, only if you feel like answering: you said "+lower(reason)+". "+
+  "Is there something we could have done differently, or was it always going to end here? Genuinely useful either way, and it doesn't change anything above.\n\n"+
+  "Thanks for the time you gave us.\n\n"+
+  p.v.bye+"\n"+p.me+", "+p.role+" at "+p.co+"\n\n"+
+  "---\n\n"+
+  "## If — and only if — there's a real fit you can offer\n\n"+
+  "Add one paragraph, before the sign-off, and never more than one:\n\n"+
+  "> \"Before you go, one thing worth knowing: "+B(f.offer,"what you can genuinely offer")+". "+
+  "If that changes the maths, say so. If it doesn't, the cancellation above stands and I won't raise it again.\"\n\n"+
+  "**What we won't do:** "+B(f.wont,"what you won't offer")+"\n\n"+
+  "Decide that before you write, not while they're pushing.\n\n"+
+  "---\n\n"+
+  "## Rules\n"+
+  "- Cancel first, ask second. A cancellation held hostage to a phone call is how you earn a review\n"+
+  "- One offer, once. A second attempt is begging and they'll remember it\n"+
+  "- Never make them ask twice, and never make them call to do what they could do in an email\n"+
+  "- Their data leaves with them, in a format they can actually open\n\n"+
+  "## Internal note\n"+
+  "- **Reason code:** [price / missing feature / champion left / never got started / bought a competitor]\n"+
+  "- **Could we have saved it?** [Honestly — yes, no, or not at this price]\n"+
+  "- **When did it actually go wrong?** [Usually months before the email]\n\n"+
+  "Read these together once a quarter. One-off cancellations are noise; the same reason four times is a roadmap item.";
 }}
 
 ]}
