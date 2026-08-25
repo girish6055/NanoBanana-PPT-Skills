@@ -1,0 +1,1523 @@
+<title>Front Office</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap">
+
+<style>
+:root{
+  --paper:#ECEFEC;
+  --surface:#FAFCFA;
+  --surface-2:#E1E6E2;
+  --sheet:#FFFFFF;
+  --line:#C9D0CB;
+  --line-soft:#DCE2DD;
+  --ink:#151A18;
+  --ink-2:#48524D;
+  --ink-3:#79837D;
+  --accent:#0E5A53;
+  --accent-ink:#0B3F3A;
+  --accent-soft:#D6E7E3;
+  --mark:#8E5407;
+  --mark-soft:#F4E5CC;
+  --danger:#8C2F22;
+  --shadow:0 1px 2px rgba(20,30,26,.06), 0 8px 24px -12px rgba(20,30,26,.22);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1211;
+    --surface:#161B19;
+    --surface-2:#1E2422;
+    --sheet:#141918;
+    --line:#2B3330;
+    --line-soft:#232A28;
+    --ink:#E7EDEA;
+    --ink-2:#A5B0AB;
+    --ink-3:#78837E;
+    --accent:#63D2C1;
+    --accent-ink:#8FE6D8;
+    --accent-soft:#123A35;
+    --mark:#E2A75B;
+    --mark-soft:#3B2A13;
+    --danger:#E0857A;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1211;
+  --surface:#161B19;
+  --surface-2:#1E2422;
+  --sheet:#141918;
+  --line:#2B3330;
+  --line-soft:#232A28;
+  --ink:#E7EDEA;
+  --ink-2:#A5B0AB;
+  --ink-3:#78837E;
+  --accent:#63D2C1;
+  --accent-ink:#8FE6D8;
+  --accent-soft:#123A35;
+  --mark:#E2A75B;
+  --mark-soft:#3B2A13;
+  --danger:#E0857A;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Archivo",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* ---------- header ---------- */
+header.bar{
+  position:sticky;top:0;z-index:20;
+  background:var(--paper);
+  background:color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);
+}
+.bar-in{
+  max-width:1220px;margin:0 auto;padding:12px 20px;
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.wordmark{display:flex;align-items:baseline;gap:9px;margin-right:auto}
+.wordmark b{font-weight:700;font-size:17px;letter-spacing:-.015em}
+.wordmark span{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:500;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+}
+.plate-chip{
+  display:flex;align-items:center;gap:10px;
+  border:1px solid var(--line);background:var(--surface);
+  border-radius:999px;padding:5px 6px 5px 14px;
+  max-width:100%;
+}
+.plate-chip .who{
+  font-size:13px;color:var(--ink-2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:44ch;
+}
+.plate-chip .who b{color:var(--ink);font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+.dot.empty{background:var(--mark)}
+.btn{
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  border-radius:7px;padding:7px 13px;cursor:pointer;
+  font-size:13.5px;font-weight:600;letter-spacing:-.005em;
+  transition:background .15s ease,border-color .15s ease,transform .06s ease;
+}
+.btn:hover{border-color:var(--ink-3);background:var(--surface-2)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.primary:hover{filter:brightness(1.08);background:var(--accent);border-color:var(--accent)}
+.btn.tiny{padding:5px 10px;font-size:12.5px;border-radius:6px}
+
+/* ---------- plate drawer ---------- */
+.drawer{border-bottom:1px solid var(--line);background:var(--surface);display:none}
+.drawer.open{display:block}
+.drawer-in{max-width:1220px;margin:0 auto;padding:22px 20px 26px}
+.drawer h2{
+  margin:0 0 4px;font-size:15px;font-weight:700;letter-spacing:-.01em;
+}
+.drawer p.note{margin:0 0 18px;font-size:13px;color:var(--ink-2);max-width:62ch}
+.grid{display:grid;gap:14px 18px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field.full{grid-column:1/-1}
+label.lab{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:500;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);
+}
+input.in,select.in,textarea.in{
+  background:var(--paper);border:1px solid var(--line);border-radius:7px;
+  padding:9px 11px;font-size:14px;width:100%;
+  transition:border-color .15s ease,background .15s ease;
+}
+textarea.in{resize:vertical;min-height:82px;line-height:1.55}
+input.in:hover,select.in:hover,textarea.in:hover{border-color:var(--ink-3)}
+input.in:focus,select.in:focus,textarea.in:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+input.in::placeholder,textarea.in::placeholder{color:var(--ink-3);opacity:.75}
+.drawer-actions{display:flex;gap:10px;align-items:center;margin-top:20px;flex-wrap:wrap}
+.saved{font-size:12.5px;color:var(--accent);opacity:0;transition:opacity .2s ease}
+.saved.show{opacity:1}
+
+/* ---------- shell ---------- */
+main{max-width:1220px;margin:0 auto;padding:26px 20px 80px;display:grid;gap:26px;grid-template-columns:236px minmax(0,1fr)}
+@media (max-width:880px){main{grid-template-columns:1fr;gap:20px}}
+
+/* ---------- rail ---------- */
+.rail{
+  display:flex;flex-direction:column;gap:22px;align-self:start;
+  position:sticky;top:74px;max-height:calc(100vh - 96px);overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:var(--line) transparent;padding-right:4px;
+}
+@media (max-width:880px){.rail{position:static;max-height:none;overflow:visible;padding-right:0}}
+.station{display:flex;flex-direction:column;gap:2px}
+.station-head{display:flex;align-items:center;gap:8px;padding:0 0 7px 2px;border-bottom:1px solid var(--line-soft);margin-bottom:6px}
+.station-code{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;letter-spacing:.1em;
+  color:var(--accent);border:1px solid var(--accent-soft);background:var(--accent-soft);
+  border-radius:4px;padding:2px 5px;
+}
+.station-name{font-size:12.5px;font-weight:700;letter-spacing:.005em;color:var(--ink-2)}
+.job{
+  text-align:left;border:0;background:none;cursor:pointer;
+  padding:6px 9px 6px 11px;border-radius:6px;font-size:13.5px;color:var(--ink-2);
+  border-left:2px solid transparent;line-height:1.35;
+  transition:background .12s ease,color .12s ease;
+}
+.job:hover{background:var(--surface-2);color:var(--ink)}
+.job[aria-current="true"]{background:var(--surface);color:var(--ink);font-weight:600;border-left-color:var(--accent);box-shadow:var(--shadow)}
+@media (max-width:880px){
+  .station{gap:4px}
+  .station-jobs{display:flex;flex-wrap:wrap;gap:6px}
+  .job{border:1px solid var(--line);border-left-width:1px;border-radius:999px;padding:5px 12px;font-size:13px}
+  .job[aria-current="true"]{border-color:var(--accent);border-left-color:var(--accent)}
+}
+
+/* ---------- work area ---------- */
+.work{display:flex;flex-direction:column;gap:20px;min-width:0;scroll-margin-top:84px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.card-in{padding:22px}
+.job-head{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}
+.job-eyebrow{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:500;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);
+}
+.job-title{margin:0;font-size:23px;font-weight:700;letter-spacing:-.02em;line-height:1.2;text-wrap:balance}
+.job-desc{margin:0;font-size:13.5px;color:var(--ink-2);max-width:64ch}
+.run-row{display:flex;align-items:center;gap:12px;margin-top:20px;flex-wrap:wrap}
+.run-row .hint{font-size:12.5px;color:var(--ink-3)}
+
+.nudge{
+  display:flex;gap:12px;align-items:flex-start;
+  border:1px solid var(--mark);background:var(--mark-soft);color:var(--mark);
+  border-radius:10px;padding:12px 14px;font-size:13.5px;
+}
+.nudge b{font-weight:700}
+.nudge button{background:none;border:0;color:inherit;text-decoration:underline;cursor:pointer;font-weight:600;padding:0}
+
+/* ---------- output sheet ---------- */
+.sheet-wrap{display:none;flex-direction:column;gap:0;scroll-margin-top:84px}
+.sheet-wrap.show{display:flex}
+.sheet-bar{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:var(--surface);border:1px solid var(--line);border-bottom:0;
+  border-radius:12px 12px 0 0;padding:10px 16px;
+}
+.sheet-bar .meta{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;
+  color:var(--ink-3);text-transform:uppercase;margin-right:auto;
+}
+.blanks{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.04em;
+  color:var(--mark);background:var(--mark-soft);border:1px solid var(--mark-soft);
+  padding:3px 8px;border-radius:5px;
+}
+.blanks.none{color:var(--accent);background:var(--accent-soft);border-color:var(--accent-soft)}
+.sheet{
+  background:var(--sheet);border:1px solid var(--line);border-radius:0 0 12px 12px;
+  padding:44px 52px 52px;box-shadow:var(--shadow);
+  font-family:"Newsreader",Georgia,"Times New Roman",serif;
+  font-size:17px;line-height:1.62;color:var(--ink);
+  overflow-wrap:break-word;
+}
+@media (max-width:640px){.sheet{padding:28px 22px 36px;font-size:16px}}
+.sheet h1{
+  font-family:"Archivo",sans-serif;font-size:26px;font-weight:700;letter-spacing:-.022em;
+  line-height:1.18;margin:0 0 18px;text-wrap:balance;
+}
+.sheet h2{
+  font-family:"Archivo",sans-serif;font-size:14px;font-weight:700;letter-spacing:.02em;
+  text-transform:uppercase;color:var(--ink-2);margin:32px 0 10px;
+  padding-bottom:6px;border-bottom:1px solid var(--line-soft);
+}
+.sheet h3{font-family:"Archivo",sans-serif;font-size:15.5px;font-weight:700;letter-spacing:-.01em;margin:22px 0 6px}
+.sheet p{margin:0 0 14px}
+.sheet ul,.sheet ol{margin:0 0 16px;padding-left:22px}
+.sheet li{margin:0 0 7px}
+.sheet li::marker{color:var(--ink-3)}
+.sheet hr{border:0;border-top:1px solid var(--line-soft);margin:26px 0}
+.sheet blockquote{
+  margin:0 0 16px;padding:2px 0 2px 16px;border-left:2px solid var(--accent);
+  color:var(--ink-2);font-style:italic;
+}
+.sheet strong{font-weight:600}
+.sheet .mk{
+  background:var(--mark-soft);color:var(--mark);
+  padding:0 3px;border-radius:3px;font-family:"IBM Plex Mono",monospace;
+  font-size:.82em;font-style:normal;
+}
+footer.foot{
+  max-width:1220px;margin:0 auto;padding:0 20px 40px;
+  font-size:12.5px;color:var(--ink-3);
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<header class="bar">
+  <div class="bar-in">
+    <div class="wordmark"><b>Front Office</b><span>Document desk</span></div>
+    <div class="plate-chip">
+      <span class="dot empty" id="plateDot"></span>
+      <span class="who" id="plateWho">No company plate yet</span>
+      <button class="btn tiny" id="plateBtn" aria-expanded="false" aria-controls="drawer">Company plate</button>
+    </div>
+  </div>
+</header>
+
+<section class="drawer" id="drawer" aria-label="Company plate">
+  <div class="drawer-in">
+    <h2>Your company plate</h2>
+    <p class="note">Fill this in once. Every document on every station is written from it — the name, the audience, the voice, the sign-off. It stays in this browser; nothing is sent anywhere.</p>
+    <div class="grid" id="plateGrid"></div>
+    <div class="drawer-actions">
+      <button class="btn primary" id="plateSave">Save plate</button>
+      <button class="btn" id="plateClear">Clear</button>
+      <span class="saved" id="plateSaved">Saved</span>
+    </div>
+  </div>
+</section>
+
+<main>
+  <nav class="rail" id="rail" aria-label="Stations"></nav>
+
+  <div class="work">
+    <div id="nudgeSlot"></div>
+
+    <div class="card">
+      <div class="card-in">
+        <div class="job-head">
+          <div class="job-eyebrow" id="jobEyebrow">Office of the CEO</div>
+          <h1 class="job-title" id="jobTitle">Weekly team update</h1>
+          <p class="job-desc" id="jobDesc"></p>
+        </div>
+        <div class="grid" id="briefGrid"></div>
+        <div class="run-row">
+          <button class="btn primary" id="runBtn">Write it</button>
+          <button class="btn" id="clearBtn">Clear the brief</button>
+          <span class="hint" id="runHint">Leave anything blank and it comes back in brackets.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-wrap" id="sheetWrap">
+      <div class="sheet-bar">
+        <span class="meta" id="sheetMeta"></span>
+        <span class="blanks" id="blanks"></span>
+        <button class="btn tiny" id="copyBtn">Copy document</button>
+      </div>
+      <article class="sheet" id="sheet"></article>
+    </div>
+  </div>
+</main>
+
+<footer class="foot">Written in your browser from the plate above. Anything in brackets is a guess to replace before you send it.</footer>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- storage (never throws) ---------------- */
+var KEY_PLATE="frontoffice.plate.v1", KEY_BRIEF="frontoffice.brief.v1", KEY_LAST="frontoffice.last.v1";
+function load(k,d){try{var r=localStorage.getItem(k);return r?JSON.parse(r):d;}catch(e){return d;}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+/* ---------------- text helpers ---------------- */
+function S(v){return (v==null?"":String(v)).trim();}
+function B(v,ph){return S(v)||("["+ph+"]");}
+function lines(v){return S(v).split("\n").map(function(s){return s.trim();}).filter(Boolean);}
+function list(v,phs){var L=lines(v);return L.length?L:(phs||[]).map(function(p){return "["+p+"]";});}
+function bul(v,phs){return list(v,phs).map(function(x){return "- "+x;}).join("\n");}
+function num(v,phs){return list(v,phs).map(function(x,i){return (i+1)+". "+x;}).join("\n");}
+function first(v,ph){var L=lines(v);return L.length?L[0].replace(/\.$/,""):("["+ph+"]");}
+function lower(s){return s.charAt(0).toLowerCase()+s.slice(1);}
+function clock(m){var h=Math.floor(m/60),r=m%60;return h+":"+(r<10?"0":"")+r;}
+function today(){
+  var d=new Date();
+  return d.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+}
+
+var VOICE={
+  plain:{hi:function(n){return n+",";},bye:"Thanks,",ask:"What I need from you",tone:"plain and direct"},
+  warm:{hi:function(n){return "Hi "+n+",";},bye:"Thank you,",ask:"Where I could use your help",tone:"warm and human"},
+  sharp:{hi:function(n){return n+" —";},bye:"Onward,",ask:"What I need",tone:"sharp and confident"},
+  formal:{hi:function(n){return "Dear "+n+",";},bye:"Sincerely,",ask:"Requested actions",tone:"formal and precise"}
+};
+
+/* ---------------- the company plate ---------------- */
+var PLATE_FIELDS=[
+  {k:"co",l:"Company name",ph:"Meridian Freight"},
+  {k:"what",l:"What you do, in one line",ph:"route planning software for regional trucking fleets",full:true},
+  {k:"industry",l:"Industry",ph:"logistics software"},
+  {k:"who",l:"Who it's for",ph:"operations managers at 20–200 truck fleets"},
+  {k:"size",l:"Team size or stage",ph:"14 people, Series A"},
+  {k:"voice",l:"Voice",t:"sel",opts:[["plain","Plain and direct"],["warm","Warm and human"],["sharp","Sharp and confident"],["formal","Formal and precise"]]},
+  {k:"me",l:"Your name",ph:"Dana Osei"},
+  {k:"role",l:"Your role",ph:"CEO"},
+  {k:"loc",l:"Where you're based",ph:"Chicago, hybrid"},
+  {k:"proof",l:"Best proof point",ph:"cut empty miles 18% for Halloran Transport"},
+  {k:"site",l:"Website or contact",ph:"meridianfreight.com"}
+];
+
+function plateView(raw){
+  var v=raw||{};
+  var key=S(v.voice)||"plain";
+  return {
+    raw:v, voiceKey:key, v:VOICE[key]||VOICE.plain,
+    co:B(v.co,"Company name"),
+    what:B(v.what,"what you do"),
+    industry:B(v.industry,"your industry"),
+    who:B(v.who,"who you serve"),
+    size:B(v.size,"team size"),
+    me:B(v.me,"Your name"),
+    role:B(v.role,"your role"),
+    loc:B(v.loc,"your location"),
+    proof:B(v.proof,"your proof point"),
+    site:B(v.site,"your website")
+  };
+}
+function plateFilled(raw){
+  var v=raw||{},n=0;
+  ["co","what","who","me","role"].forEach(function(k){if(S(v[k]))n++;});
+  return n;
+}
+
+/* ---------------- field helper ---------------- */
+function F(k,l,t,ph,opts){return {k:k,l:l,t:t||"text",ph:ph||"",opts:opts};}
+
+/* ================= STATIONS ================= */
+var STATIONS=[
+{
+code:"CEO", name:"Office of the CEO",
+jobs:[
+
+{id:"weekly", name:"Weekly team update", desc:"The Monday note that keeps everyone pointed the same way — shipped, in flight, at risk, and what you need.",
+fields:[
+  F("week","Week of","text","August 25"),
+  F("to","Who it goes to","text","Team"),
+  F("wins","Shipped this week (one per line)","area","Route optimizer beta went out to 6 fleets\nClosed Halloran Transport — 40 trucks"),
+  F("progress","In flight (one per line)","area","Driver mobile app — in QA, out next Thursday\nSOC 2 evidence collection — 60% done"),
+  F("risks","Risks and blockers (one per line)","area","Two support engineers out sick, response times slipping"),
+  F("ask","What you need from the team (one per line)","area","Anyone who talked to a customer this week: drop the notes in #voice-of-customer")
+],
+doc:function(p,f){
+  return "# Weekly update — "+p.co+"\n"+
+  B(f.week,"week of")+" · "+p.me+", "+p.role+"\n\n"+
+  p.v.hi(B(f.to,"Team"))+"\n\n"+
+  "**The one thing to know:** "+first(f.wins,"the week's biggest win")+". "+
+  "The thing I'm watching is "+lower(first(f.risks,"the risk you're tracking"))+".\n\n"+
+  "## Shipped\n"+bul(f.wins,["what went out this week"])+"\n\n"+
+  "## In flight\n"+bul(f.progress,["what's moving and when it lands"])+"\n\n"+
+  "## Risks and blockers\n"+bul(f.risks,["what could go wrong, and who owns it"])+"\n\n"+
+  "## "+p.v.ask+"\n"+bul(f.ask,["the one thing you want back from people"])+"\n\n"+
+  "---\n\n"+p.v.bye+"\n"+p.me;
+}},
+
+{id:"investor", name:"Investor update", desc:"Monthly note to the cap table: numbers up top, the bad news said plainly, and specific asks.",
+fields:[
+  F("period","Period","text","August 2026"),
+  F("metrics","Headline numbers (one per line)","area","MRR $84,200 — up 9% MoM\nActive fleets 61 — up from 55\nNet revenue retention 112%"),
+  F("good","What went well (one per line)","area","Signed Halloran Transport, our largest fleet yet\nSelf-serve onboarding cut setup time from 9 days to 2"),
+  F("bad","What didn't (one per line)","area","Churned two small fleets on price\nSecond engineering hire fell through at offer stage"),
+  F("runway","Cash and runway","text","$2.1M in the bank, 16 months at current burn"),
+  F("asks","Asks (one per line)","area","Intros to fleet operators in the Southeast\nAnyone who has run a SOC 2 Type II with a team under 20")
+],
+doc:function(p,f){
+  return "# "+p.co+" — investor update, "+B(f.period,"period")+"\n\n"+
+  p.v.hi("All")+"\n\n"+
+  p.co+" builds "+p.what+" for "+p.who+".\n\n"+
+  "## Numbers\n"+bul(f.metrics,["the metric that matters most, with the change"])+"\n\n"+
+  "**Cash:** "+B(f.runway,"cash in bank and months of runway")+"\n\n"+
+  "## What went well\n"+bul(f.good,["the win worth their attention"])+"\n\n"+
+  "## What didn't\n"+bul(f.bad,["the thing that went wrong — say it plainly"])+"\n\n"+
+  "## Where you can help\n"+num(f.asks,["a specific, answerable ask"])+"\n\n"+
+  "---\n\n"+p.v.bye+"\n"+p.me+", "+p.role+"\n"+p.site;
+}},
+
+{id:"decision", name:"Decision brief", desc:"One page that gets a decision made: the question, the real options, your call, and the deadline.",
+fields:[
+  F("decision","The decision to make","text","Do we build the driver app in-house or buy Fleetlink?"),
+  F("decider","Who decides","text","the leadership team"),
+  F("deadline","Decide by","text","Friday, September 4"),
+  F("context","Why this is on the table now (one per line)","area","Three of our last five deals asked for a driver app\nOur roadmap has no engineering slack until Q1"),
+  F("options","Options (one per line: Name — the case for it — the cost)","area","Build in-house — full control of the data model — two engineers for a quarter\nBuy Fleetlink — live in six weeks — $4k/mo and their data model\nDo nothing — no cost — we keep losing the deals that ask"),
+  F("rec","Your recommendation","text","Buy Fleetlink for a year, revisit when we have 100 fleets"),
+  F("accept","What we're accepting if we go your way (one per line)","area","A vendor dependency on our second-most-used surface")
+],
+doc:function(p,f){
+  var opts=list(f.options,["Option — the case for it — the cost"]);
+  var body=opts.map(function(o){
+    var parts=o.split("—").map(function(s){return s.trim();});
+    var out="### "+(parts[0]||o)+"\n";
+    if(parts[1])out+="**For:** "+parts[1]+"\n\n";
+    if(parts[2])out+="**Cost:** "+parts[2]+"\n";
+    return out;
+  }).join("\n");
+  return "# Decision brief: "+B(f.decision,"the decision")+"\n\n"+
+  "**Decider:** "+B(f.decider,"who decides")+"  \n"+
+  "**Decide by:** "+B(f.deadline,"date")+"  \n"+
+  "**Prepared by:** "+p.me+", "+p.role+" · "+today()+"\n\n"+
+  "## Why now\n"+bul(f.context,["what changed that makes this urgent"])+"\n\n"+
+  "## Options\n"+body+"\n"+
+  "## Recommendation\n"+B(f.rec,"your recommendation, in one sentence")+"\n\n"+
+  "## What we're accepting\n"+bul(f.accept,["the downside you are knowingly taking on"])+"\n\n"+
+  "## What happens next\n"+
+  "If nobody objects by "+B(f.deadline,"date")+", we proceed with the recommendation above. "+
+  "Objections go to "+p.me+" with an alternative attached — not just a concern.";
+}},
+
+{id:"goals", name:"Quarterly goals", desc:"Three goals with real measures and owners, plus the list of what you're deliberately not doing.",
+fields:[
+  F("quarter","Quarter","text","Q4 2026"),
+  F("theme","The theme, in one line","text","Make onboarding so fast that sales stops being the bottleneck"),
+  F("goals","Goals (one per line: Goal — how you'll measure it — owner)","area","Cut setup time to under 24 hours — median time from contract to first optimized route — Priya\nGet to $120k MRR — monthly recurring revenue on the last day of the quarter — Dana\nShip the driver app — 25 fleets with 10+ daily active drivers — Marcus"),
+  F("not","What we're not doing this quarter (one per line)","area","No new integrations\nNo enterprise SSO until a deal actually requires it"),
+  F("check","How we'll check in","text","15 minutes every other Monday, numbers on screen")
+],
+doc:function(p,f){
+  var gs=list(f.goals,["Goal — how you'll measure it — owner"]);
+  var body=gs.map(function(g,i){
+    var parts=g.split("—").map(function(s){return s.trim();});
+    return "### Goal "+(i+1)+": "+(parts[0]||g)+"\n"+
+      "**Measure:** "+(parts[1]||"[how you will measure it]")+"  \n"+
+      "**Owner:** "+(parts[2]||"[owner]")+"\n";
+  }).join("\n");
+  return "# "+B(f.quarter,"quarter")+" goals — "+p.co+"\n\n"+
+  "> "+B(f.theme,"the one-line theme for the quarter")+"\n\n"+
+  "Three goals. If we hit all three, the quarter was good. If we hit two, it was fine. "+
+  "Anything that isn't one of these is a distraction until it isn't.\n\n"+
+  "## The goals\n"+body+"\n"+
+  "## What we're not doing\n"+bul(f.not,["the tempting thing you are saying no to"])+"\n\n"+
+  "## How we'll know\n"+B(f.check,"cadence and format of the check-in")+
+  ". Owners bring the number, not a status update.\n\n"+
+  "— "+p.me+", "+p.role;
+}},
+
+{id:"hardnews", name:"Hard-news memo", desc:"For layoffs, a lost customer, a missed number, a shutdown. Says it in the first line and answers the questions people will actually have.",
+fields:[
+  F("news","The news, in one sentence","text","We're closing the warehouse analytics product on October 31"),
+  F("affected","Who this affects","text","the four people on the analytics team and 11 customers"),
+  F("effective","Effective when","text","October 31, 2026"),
+  F("why","Why (one per line — be specific)","area","It's 6% of revenue and 40% of our support load\nWe'd need two more engineers to make it competitive, and we'd rather put them on routing"),
+  F("next","What happens next (one per line)","area","Affected customers get 90 days of free export support\nEveryone on the team is being moved to routing, no roles are being cut"),
+  F("support","What we're doing for the people affected (one per line)","area","One-on-one with me this week for everyone on the team"),
+  F("questions","Where questions go","text","me, directly — or the all-hands Thursday at 2")
+],
+doc:function(p,f){
+  return "# "+B(f.news,"the news, in one sentence")+"\n\n"+
+  p.v.hi("Team")+"\n\n"+
+  B(f.news,"the news, in one sentence")+", effective "+B(f.effective,"date")+". "+
+  "This affects "+B(f.affected,"who is affected")+". I want you to hear the reasoning from me, not secondhand.\n\n"+
+  "## Why\n"+bul(f.why,["the real reason — the one you'd give a friend"])+"\n\n"+
+  "This was my call. I know it lands hard, and I'm not going to dress it up.\n\n"+
+  "## What happens next\n"+bul(f.next,["the concrete next step and its date"])+"\n\n"+
+  "## What we're doing for the people affected\n"+bul(f.support,["the specific support on offer"])+"\n\n"+
+  "## Questions\n"+
+  "Bring them to "+B(f.questions,"where questions go")+". I'd rather answer the uncomfortable ones directly than have them travel.\n\n"+
+  "— "+p.me;
+}},
+
+{id:"sop", name:"Standard operating procedure", desc:"A process written down once so it stops living in one person's head.",
+fields:[
+  F("proc","Process name","text","Onboarding a new fleet"),
+  F("owner","Who owns this process","text","Priya, Customer Success"),
+  F("trigger","What kicks it off","text","A signed contract lands in the #closed-won channel"),
+  F("steps","The steps, in order (one per line)","area","Create the fleet account and invite the ops manager within 4 business hours\nImport their vehicle list from the spreadsheet they sent — check VINs against the DOT database\nRun a 45-minute setup call: routes, depots, driver list\nWatch their first week of routes and flag anything that looks wrong before they notice"),
+  F("done","How you know it worked","text","They've run optimized routes on five consecutive business days without asking us for help"),
+  F("wrong","When it goes wrong","area","Vehicle import fails on more than 5% of VINs — stop and hand to engineering, don't hand-fix\nOps manager goes quiet for 5 days — escalate to their signer")
+],
+doc:function(p,f){
+  return "# SOP: "+B(f.proc,"process name")+"\n\n"+
+  "**Owner:** "+B(f.owner,"owner")+"  \n"+
+  "**Applies to:** "+p.co+"  \n"+
+  "**Last reviewed:** "+today()+"\n\n"+
+  "## When to run this\n"+B(f.trigger,"the trigger")+"\n\n"+
+  "## Steps\n"+num(f.steps,["the first step, with its deadline"])+"\n\n"+
+  "## Done means\n"+B(f.done,"the observable signal that it worked")+"\n\n"+
+  "## When it goes wrong\n"+bul(f.wrong,["the failure case and who it escalates to"])+"\n\n"+
+  "---\n\n"+
+  "If you follow this and it produces a bad outcome, the SOP is wrong, not you. "+
+  "Tell "+B(f.owner,"the owner")+" and it gets changed.";
+}}
+
+]},
+
+{
+code:"PPL", name:"People & HR",
+jobs:[
+
+{id:"posting", name:"Job posting", desc:"A posting that describes the actual job, with a real comp range and an honest process.",
+fields:[
+  F("role","Role title","text","Senior Backend Engineer"),
+  F("level","Level","text","Senior — 6+ years"),
+  F("where","Location and arrangement","text","Chicago or remote in US Central"),
+  F("type","Employment type","text","Full-time"),
+  F("does","What they'll actually do (one per line)","area","Own the routing engine — the code that decides where 4,000 trucks go every morning\nCut our nightly optimization run from 40 minutes to under 10\nSit in on customer calls once a month so you hear what breaks"),
+  F("must","Must-haves (one per line)","area","You've owned a system where being wrong cost real money\nStrong with Python and Postgres at scale"),
+  F("nice","Nice to have (one per line)","area","Logistics, routing or OR background"),
+  F("comp","Compensation","text","$165,000–$195,000 plus 0.15%–0.4% equity"),
+  F("mgr","Who they report to","text","Marcus, VP Engineering"),
+  F("process","Hiring process (one per line)","area","30-minute call with the hiring manager\nA 2-hour paid work session on a real routing problem\nTeam conversations, then an offer within 3 days")
+],
+doc:function(p,f){
+  return "# "+B(f.role,"role title")+"\n\n"+
+  B(f.where,"location")+" · "+B(f.type,"full-time")+" · "+B(f.comp,"salary range")+"\n\n"+
+  "## About "+p.co+"\n"+
+  p.co+" builds "+p.what+". Our customers are "+p.who+". We're "+p.size+", and we "+p.proof+".\n\n"+
+  "## The role\n"+
+  "You'll report to "+B(f.mgr,"hiring manager")+" and work at the "+B(f.level,"level")+" level.\n\n"+
+  "## What you'll do\n"+bul(f.does,["the first real responsibility — be concrete"])+"\n\n"+
+  "## What we're looking for\n"+bul(f.must,["the non-negotiable"])+"\n\n"+
+  "## Nice to have\n"+bul(f.nice,["the bonus, not a requirement"])+"\n\n"+
+  "Research says people apply only when they match every line. Please don't do that — if the first list is mostly you, apply.\n\n"+
+  "## Compensation\n"+
+  B(f.comp,"salary range")+". We post the range because haggling over information isn't a negotiation skill we're testing for.\n\n"+
+  "## How hiring works\n"+num(f.process,["the first step and how long it takes"])+"\n\n"+
+  "## How to apply\n"+
+  "Write to "+p.site+" with anything that shows how you think. A repo, a doc, a paragraph — a cover letter is optional and a résumé is fine.";
+}},
+
+{id:"interview", name:"Interview guide", desc:"A structured guide for one stage: timings, questions tied to competencies, and a scoring rubric everyone reads the same way.",
+fields:[
+  F("role","Role being interviewed","text","Senior Backend Engineer"),
+  F("stage","Stage","sel","",[["Screening call","Screening call"],["Hiring manager","Hiring manager"],["Craft interview","Craft interview"],["Team conversation","Team conversation"],["Final","Final"]]),
+  F("mins","Length in minutes","text","45"),
+  F("comps","Competencies to test (one per line)","area","Systems judgment under uncertainty\nOwnership when something breaks\nWriting and explaining"),
+  F("must","The one thing you must learn from this stage","text","Can they reason about a system where being wrong costs a customer money?"),
+  F("sell","What to sell them on","area","Routing is a genuinely hard problem and we're the ones solving it for mid-size fleets")
+],
+doc:function(p,f){
+  var mins=parseInt(S(f.mins),10); if(!mins||mins<15)mins=45;
+  var open=5, close=Math.max(8,Math.round(mins*0.2)), core=mins-open-close;
+  var comps=list(f.comps,["the competency you're testing"]);
+  var per=Math.max(5,Math.floor(core/comps.length));
+  var body=comps.map(function(c,i){
+    var lc=lower(c);
+    return "### "+(i+1)+". "+c+" — "+per+" min\n"+
+    "- \"Tell me about a time "+lc+" was the hardest part of a project. What did you personally do?\"\n"+
+    "- \"What went wrong, and what would you do differently now?\"\n"+
+    "- Follow up until you have a specific example with a date, a decision, and a result. Move on when you have it.\n";
+  }).join("\n");
+  return "# Interview guide: "+B(f.role,"role")+"\n"+
+  B(f.stage,"stage")+" · "+mins+" minutes · "+p.co+"\n\n"+
+  "## What this stage is for\n"+
+  B(f.must,"the one thing this stage must establish")+"\n\n"+
+  "Every interviewer runs the same questions so we're comparing candidates, not interviewers.\n\n"+
+  "## Timing\n"+
+  "- **"+clock(0)+"–"+clock(open)+"** — Welcome, what "+p.co+" does, how the time will run\n"+
+  "- **"+clock(open)+"–"+clock(open+core)+"** — Competency questions below\n"+
+  "- **"+clock(open+core)+"–"+clock(mins)+"** — Their questions, and what happens next\n\n"+
+  "## Questions\n"+body+"\n"+
+  "## Scoring — fill this in within 10 minutes of hanging up\n"+
+  "Score each competency 1–4. Write one line of evidence for every score; a score with no example doesn't count.\n\n"+
+  "- **4 — Strong yes.** Specific evidence, better than our current bar.\n"+
+  "- **3 — Yes.** Meets the bar with real examples.\n"+
+  "- **2 — No.** Plausible answers, no evidence behind them.\n"+
+  "- **1 — Strong no.** Evidence they can't do this.\n\n"+
+  "A 2 anywhere on a must-have competency is a no, whatever the average says.\n\n"+
+  "## What to sell them on\n"+bul(f.sell,["the honest reason someone good would want this job"])+"\n\n"+
+  "## Watch for\n"+
+  "- \"We\" all the way through with no \"I\" — dig for what they did\n"+
+  "- No story where they were wrong\n"+
+  "- Blame that only ever points at other teams";
+}},
+
+{id:"offer", name:"Offer letter", desc:"A warm, unambiguous offer: the numbers, the date, who they report to, and when you need an answer.",
+fields:[
+  F("name","Candidate name","text","Alex Rivera"),
+  F("role","Role","text","Senior Backend Engineer"),
+  F("salary","Base salary","text","$182,000 per year"),
+  F("equity","Equity","text","0.3%, four-year vest with a one-year cliff"),
+  F("extras","Anything else worth stating (one per line)","area","Unlimited PTO with a 15-day minimum we actually enforce\n$2,000/year for learning, no approval needed"),
+  F("start","Start date","text","September 22, 2026"),
+  F("mgr","Reports to","text","Marcus Bell, VP Engineering"),
+  F("where","Location and arrangement","text","Chicago, hybrid — Tuesdays and Thursdays in the office"),
+  F("by","Reply by","text","September 5")
+],
+doc:function(p,f){
+  var name=B(f.name,"candidate name");
+  return "# Offer of employment — "+B(f.role,"role")+"\n"+
+  today()+"\n\n"+
+  p.v.hi(name.split(" ")[0])+"\n\n"+
+  "We'd like you to join "+p.co+" as "+B(f.role,"role")+". Everyone who met you wanted to work with you, and that's the whole basis of this offer.\n\n"+
+  "## The offer\n"+
+  "- **Role:** "+B(f.role,"role")+", reporting to "+B(f.mgr,"manager")+"\n"+
+  "- **Base salary:** "+B(f.salary,"base salary")+"\n"+
+  "- **Equity:** "+B(f.equity,"equity grant and vesting")+"\n"+
+  "- **Start date:** "+B(f.start,"start date")+"\n"+
+  "- **Location:** "+B(f.where,"location and arrangement")+"\n\n"+
+  "## Also included\n"+bul(f.extras,["the benefit worth naming"])+"\n\n"+
+  "## What we need from you\n"+
+  "Let us know by "+B(f.by,"reply-by date")+". If you want to talk anything through first — the number, the start date, the role — say so and we'll talk. "+
+  "A question is not a rejection, and asking one won't cost you anything here.\n\n"+
+  "The formal paperwork follows this note and says the same things in longer words. If the two ever disagree, tell me — this letter is what we meant.\n\n"+
+  p.v.bye+"\n"+p.me+", "+p.role+"\n"+p.co+" · "+p.site;
+}},
+
+{id:"firstweek", name:"First-week plan", desc:"Day-by-day for someone's first five days, ending with something they've actually shipped.",
+fields:[
+  F("name","New hire","text","Alex Rivera"),
+  F("role","Role","text","Senior Backend Engineer"),
+  F("start","Start date","text","September 22"),
+  F("mgr","Manager","text","Marcus"),
+  F("buddy","Onboarding buddy","text","Priya"),
+  F("tools","Accounts and tools they need on day one (one per line)","area","Laptop, shipped to arrive the Friday before\nGitHub, Linear, Slack, 1Password\nRead access to the production routing database"),
+  F("win","What they should have shipped by Friday","text","One merged pull request that reaches production, however small")
+],
+doc:function(p,f){
+  var name=B(f.name,"new hire"),fn=name.split(" ")[0],buddy=B(f.buddy,"buddy"),mgr=B(f.mgr,"manager");
+  return "# First week: "+name+", "+B(f.role,"role")+"\n"+
+  "Starts "+B(f.start,"start date")+" · Manager: "+mgr+" · Buddy: "+buddy+"\n\n"+
+  "The goal of week one is not for "+fn+" to be productive. It's for "+fn+" to know how things work here, "+
+  "who to ask, and to have shipped one small thing so the machinery isn't a mystery.\n\n"+
+  "## Before day one — "+mgr+" owns this\n"+bul(f.tools,["the account or piece of kit they need"])+"\n"+
+  "- Calendar invites for everything below, sent before they start\n"+
+  "- A note to the team saying who's joining, what they'll work on, and when\n\n"+
+  "## Day 1 — land\n"+
+  "- 9:30 — "+mgr+", one hour: what we do, who "+p.who+" are, what the first month looks like\n"+
+  "- 11:00 — Setup with "+buddy+". Every setup step that fails goes in the onboarding doc as they hit it\n"+
+  "- Lunch with the team, no agenda\n"+
+  "- Afternoon — read-only: last quarter's goals, the last three customer calls\n\n"+
+  "## Day 2 — watch\n"+
+  "- Sit in on a real customer conversation\n"+
+  "- "+buddy+" walks the system end to end, whiteboard, no slides\n"+
+  "- Pick up their first small task — something real, something safe\n\n"+
+  "## Day 3 — meet\n"+
+  "- 30 minutes each with three people they'll depend on\n"+
+  "- Keep working the first task, ask for help early and loudly\n\n"+
+  "## Day 4 — ship\n"+
+  "- Get the first change reviewed and merged\n"+
+  "- 30 minutes with "+mgr+": what's confusing so far?\n\n"+
+  "## Day 5 — reflect\n"+
+  "- **Ship target:** "+B(f.win,"the small first win")+"\n"+
+  "- 45 minutes with "+mgr+": what surprised you, what's still fuzzy, what should we fix in onboarding\n"+
+  "- "+fn+" edits this document for the next person. That's part of the job.\n\n"+
+  "## By day 30\n"+
+  fn+" should be able to explain what "+p.co+" does to a stranger, know who to ask for anything, "+
+  "and own one piece of work end to end.";
+}},
+
+{id:"policy", name:"Policy", desc:"A short policy people can actually follow — why it exists, who it covers, and the rules in plain language.",
+fields:[
+  F("topic","Policy topic","text","Remote and hybrid work"),
+  F("covers","Who it covers","text","everyone on payroll, including part-time"),
+  F("effective","Effective date","text","October 1, 2026"),
+  F("why","Why this exists","text","People kept asking case by case and getting different answers"),
+  F("rules","The rules (one per line)","area","Tuesdays and Thursdays are in-office days for anyone within commuting distance of Chicago\nEverything else is your call — no approval needed\nIf your team needs you somewhere, your manager tells you two weeks ahead"),
+  F("exceptions","Exceptions and how to get one","area","Caregiving, medical needs and long-distance moves are all fine — talk to your manager, no form"),
+  F("owner","Who owns this policy","text","Dana, CEO"),
+  F("review","Next review","text","April 2027")
+],
+doc:function(p,f){
+  return "# "+B(f.topic,"policy topic")+" policy\n"+
+  p.co+" · Effective "+B(f.effective,"effective date")+" · Owner: "+B(f.owner,"owner")+"\n\n"+
+  "## Why this exists\n"+B(f.why,"the problem this policy solves")+"\n\n"+
+  "## Who it covers\n"+"This applies to "+B(f.covers,"who it covers")+".\n\n"+
+  "## The policy\n"+num(f.rules,["the first rule, stated as an action"])+"\n\n"+
+  "## Exceptions\n"+bul(f.exceptions,["the situation that gets an exception and how to ask"])+"\n\n"+
+  "Ask for an exception before you need one, not after. Nobody here has been punished for asking.\n\n"+
+  "## If something goes wrong\n"+
+  "Tell "+B(f.owner,"owner")+". A policy that's routinely broken is usually a bad policy, and we'd rather fix it than enforce it.\n\n"+
+  "## Review\n"+
+  "This gets read again in "+B(f.review,"review date")+". If it hasn't earned its place by then, it goes.";
+}},
+
+{id:"review", name:"Performance review", desc:"An evidence-based review: what they did, where to grow, an honest rating, and goals with dates.",
+fields:[
+  F("name","Employee","text","Priya Raman"),
+  F("role","Role","text","Customer Success Lead"),
+  F("period","Review period","text","January–June 2026"),
+  F("summary","One-line summary","text","A strong half: took onboarding from our weakest link to a selling point"),
+  F("strengths","What went well — with evidence (one per line)","area","Cut median setup time from 9 days to 2 by rewriting the import step herself\nHandled the Halloran escalation without escalating it to me — the customer renewed"),
+  F("growth","Where to grow — with evidence (one per line)","area","Still doing work she should be handing to the two new CSMs — she closed 60% of tickets on a team of three\nWritten updates arrive late, so I hear about problems from customers first"),
+  F("rating","Overall","sel","",[["Exceeded expectations","Exceeded expectations"],["Met expectations","Met expectations"],["Partially met expectations","Partially met expectations"],["Did not meet expectations","Did not meet expectations"]]),
+  F("goals","Goals for next period (one per line: Goal — how we'll measure it)","area","Hand off ticket ownership — under 30% of tickets closed personally by December\nWeekly written update — lands every Friday for 12 straight weeks")
+],
+doc:function(p,f){
+  var name=B(f.name,"employee"),fn=name.split(" ")[0];
+  var gs=list(f.goals,["Goal — how we'll measure it"]).map(function(g){
+    var parts=g.split("—").map(function(s){return s.trim();});
+    return "- **"+(parts[0]||g)+"** — measured by "+(parts[1]||"[the measure]");
+  }).join("\n");
+  return "# Performance review: "+name+"\n"+
+  B(f.role,"role")+" · "+B(f.period,"review period")+" · Reviewer: "+p.me+"\n\n"+
+  "## Summary\n"+B(f.summary,"the one-line summary")+"\n\n"+
+  "## What went well\n"+bul(f.strengths,["a strength with the evidence behind it"])+"\n\n"+
+  "## Where to grow\n"+bul(f.growth,["a growth area with the evidence behind it"])+"\n\n"+
+  "None of this should be new to "+fn+". If any of it is, that's a failure of my feedback, not their performance.\n\n"+
+  "## Overall\n"+"**"+B(f.rating,"rating")+"**\n\n"+
+  "## Goals for next period\n"+gs+"\n\n"+
+  "## "+fn+"'s response\n"+
+  "[Space for their written response — added before this is filed]\n\n"+
+  "## How we'll work on this\n"+
+  "We'll look at these goals in our one-on-one every month, not once at the end. "+
+  "If a goal stops making sense, we change it on purpose rather than quietly missing it.\n\n"+
+  "Signed: "+p.me+", "+p.role+" · "+today();
+}},
+
+{id:"script", name:"Difficult-conversation script", desc:"What to say, word for word, when it's late work, a behaviour problem, or an exit — plus what to say when they push back.",
+fields:[
+  F("name","Who you're talking to","text","Sam"),
+  F("issue","The issue, in one sentence","text","Missed three committed deadlines in six weeks without flagging any of them early"),
+  F("examples","Specific examples with dates (one per line)","area","July 8 — driver app QA slipped four days, I heard about it from Priya\nJuly 29 — the Halloran migration missed its date, no warning\nAugust 14 — sprint commitment moved on the last day, again"),
+  F("impact","The impact","text","Priya has rebooked customer calls twice and stopped trusting our dates"),
+  F("change","What needs to change","text","Any date at risk gets flagged the day you know, not the day it slips"),
+  F("by","By when you'll check","text","Four weeks — we look at it again on September 22"),
+  F("stakes","What happens if it doesn't change","text","We move to a formal performance plan")
+],
+doc:function(p,f){
+  var name=B(f.name,"their name");
+  return "# Conversation script: "+name+"\n"+
+  "Prepared by "+p.me+" · "+today()+" · **Notes for you — not to be sent**\n\n"+
+  "## Before you walk in\n"+
+  "- Book it privately, at least 30 minutes, not at the end of the day\n"+
+  "- Read your examples out loud once. If one doesn't survive being said aloud, cut it\n"+
+  "- Decide now what you'll do if they agree, and what you'll do if they don't\n\n"+
+  "## Open — say this, then stop talking\n"+
+  "> \""+name+", I want to talk about something directly, because I'd rather you hear it from me clearly than pick it up in pieces. "+
+  B(f.issue,"the issue in one sentence")+".\"\n\n"+
+  "## The evidence — specific, dated, not a character description\n"+
+  bul(f.examples,["a dated, specific example"])+"\n\n"+
+  "> \"Here's what I've seen. I'm not guessing at why — I want to hear that from you.\"\n\n"+
+  "## Then be quiet\n"+
+  "Ask, \"How do you see it?\" and let the silence sit. Count to ten in your head if you have to. "+
+  "The most useful thing in this conversation is what they say next.\n\n"+
+  "## The impact\n"+
+  "> \""+B(f.impact,"the concrete impact on other people")+".\"\n\n"+
+  "## What needs to change\n"+
+  "> \"What I need is this: "+B(f.change,"the specific change")+". "+
+  "We'll look at it again "+B(f.by,"when you'll check")+".\"\n\n"+
+  "## If it doesn't change\n"+
+  "> \"I want to be straight with you about where this goes if nothing shifts: "+B(f.stakes,"the consequence")+".\"\n\n"+
+  "Say it once, calmly, and don't repeat it. Repeating it turns a boundary into a threat.\n\n"+
+  "## If they push back\n"+
+  "- **\"That's not fair.\"** → \"Tell me which part is wrong and I'll check it. I want to be accurate.\"\n"+
+  "- **They get upset.** → \"Let's stop here and pick it up tomorrow morning.\" Then actually stop.\n"+
+  "- **They blame someone else.** → \"That may all be true. What I need to talk about is the part you control.\"\n"+
+  "- **They agree straight away.** → Don't pile on. Move to what changes and how you'll check.\n\n"+
+  "## Within 24 hours — send this\n"+
+  "> \""+name+", thanks for talking today. To make sure we heard the same thing: "+
+  B(f.change,"the specific change")+", and we'll look at it again "+B(f.by,"when you'll check")+". "+
+  "If I got any of that wrong, tell me. — "+p.me+"\"";
+}}
+
+]},
+
+{
+code:"MKT", name:"Marketing",
+jobs:[
+
+{id:"campaign", name:"4-week campaign plan", desc:"A month of work laid out week by week: the goal, the number, what ships when, and who owns it.",
+fields:[
+  F("name","Campaign name","text","Empty Miles"),
+  F("goal","The goal, in one line","text","Get 40 fleet ops managers into a demo by the end of October"),
+  F("metric","The number you'll judge it on","text","40 booked demos, 25% of them from fleets over 50 trucks"),
+  F("angle","The angle","text","Empty miles are 28% of the average regional fleet's mileage, and nobody measures them"),
+  F("channels","Channels you'll use (one per line)","area","LinkedIn — organic plus a small paid push\nEmail to the 1,200-person list\nTwo industry newsletters"),
+  F("assets","Assets to make (one per line)","area","A benchmark report: empty miles across 60 fleets\nThree LinkedIn posts pulling stats from it\nA landing page with the report behind a one-field form"),
+  F("start","Week 1 starts","text","September 29"),
+  F("owner","Who owns it","text","Jamie")
+],
+doc:function(p,f){
+  var assets=list(f.assets,["the anchor asset"]);
+  return "# "+B(f.name,"campaign name")+" — four-week plan\n"+
+  p.co+" · Owner: "+B(f.owner,"owner")+" · Starts "+B(f.start,"start date")+"\n\n"+
+  "## The goal\n"+B(f.goal,"the goal in one line")+"\n\n"+
+  "**We'll judge it on:** "+B(f.metric,"the single number")+"\n\n"+
+  "## The angle\n"+B(f.angle,"the angle — what makes anyone stop")+"\n\n"+
+  "Everything below repeats that one idea. Four weeks is not enough time for two ideas.\n\n"+
+  "## Who we're talking to\n"+p.who+"\n\n"+
+  "## Channels\n"+bul(f.channels,["the channel and how you'll use it"])+"\n\n"+
+  "## Week 1 — build\n"+
+  "- Finish "+first(f.assets,"the anchor asset")+"\n"+
+  "- Landing page live and tested on a phone\n"+
+  "- Write everything for weeks 2 and 3 now, while there's time to make it good\n\n"+
+  "## Week 2 — launch\n"+
+  "- Publish the anchor asset Tuesday morning\n"+
+  "- Email the list the same day, one link, one ask\n"+
+  "- Post daily where your audience actually reads\n\n"+
+  "## Week 3 — push\n"+
+  "- Pull the three sharpest facts out of the asset and post each on its own\n"+
+  "- Follow up with everyone who opened but didn't click\n"+
+  "- Put paid behind whichever post is already working — not the one you like most\n\n"+
+  "## Week 4 — convert and close out\n"+
+  "- Direct outreach to everyone who downloaded, from a person, not the brand\n"+
+  "- Last-call email to the list\n"+
+  "- Write the retro Friday: what worked, what to kill, what to run again\n\n"+
+  "## Assets to make\n"+assets.map(function(a){return "- [ ] "+a;}).join("\n")+"\n\n"+
+  "## What would make this fail\n"+
+  "- The asset slips and the whole month compresses into two weeks\n"+
+  "- We add a second message halfway through and dilute the first\n"+
+  "- Nobody books the demos because the call to action is buried";
+}},
+
+{id:"positioning", name:"Positioning", desc:"One page that settles what you are, who it's for, and what you're saying no to — the source everything else copies from.",
+fields:[
+  F("cat","The category you're in","text","route optimization software"),
+  F("for","Who it's for, precisely","text","operations managers at regional fleets running 20–200 trucks"),
+  F("pain","The problem they'd describe in their own words","text","\"I know we're running trucks half empty, I just can't see where\""),
+  F("alt","What they do today instead","area","Spreadsheets and the dispatcher's memory\nEnterprise TMS suites priced for 1,000-truck fleets"),
+  F("diff","What you do that the alternatives don't (one per line)","area","Set up in two days, not two quarters\nPriced per truck, so a 30-truck fleet pays 30 trucks' worth\nShows empty miles as a number on the dashboard, every morning"),
+  F("proof","Proof (one per line)","area","Halloran Transport cut empty miles 18% in the first quarter\n61 fleets, none of them enterprise"),
+  F("not","What you're not (one per line)","area","Not a full TMS — we don't do billing or compliance\nNot for owner-operators under 10 trucks")
+],
+doc:function(p,f){
+  return "# Positioning — "+p.co+"\n"+
+  "Reviewed "+today()+" · Owner: "+p.me+"\n\n"+
+  "## The statement\n"+
+  "> For **"+B(f.for,"who it's for")+"** who **"+lower(B(f.pain,"the problem"))+"**, "+
+  p.co+" is **"+B(f.cat,"the category")+"** that **"+lower(first(f.diff,"the main differentiator"))+"**. "+
+  "Unlike **"+lower(first(f.alt,"the alternative they use today"))+"**, we **"+lower(first(f.proof,"the proof"))+"**.\n\n"+
+  "## Who it's for\n"+B(f.for,"who it's for")+"\n\n"+
+  "Not everyone. Being wrong about this is the most expensive mistake on this page.\n\n"+
+  "## The problem, in their words\n"+
+  "> "+B(f.pain,"the problem in their words")+"\n\n"+
+  "Use their sentence, not ours. If a customer wouldn't say it out loud, it doesn't go in the copy.\n\n"+
+  "## What they do today\n"+bul(f.alt,["the alternative they use today"])+"\n\n"+
+  "## What we do differently\n"+bul(f.diff,["the difference the alternatives can't match"])+"\n\n"+
+  "## Proof\n"+bul(f.proof,["a number, a name, or a result"])+"\n\n"+
+  "## What we're not\n"+bul(f.not,["the thing you're deliberately not"])+"\n\n"+
+  "Saying this out loud is what makes the rest believable.\n\n"+
+  "## How to use this page\n"+
+  "Every landing page, deck, ad and cold email traces back to a line above. "+
+  "If a piece of copy can't point at one, it doesn't ship. Changing this page changes everything downstream, "+
+  "so change it deliberately and tell the team when you do.";
+}},
+
+{id:"homepage", name:"Homepage copy", desc:"Section-by-section copy for the front page: headline, subhead, proof, three benefits, objections, and the call to action.",
+fields:[
+  F("promise","The promise, in plain words","text","See where your trucks run empty, every morning"),
+  F("who","Who it's for (leave blank to use the plate)","text","Regional fleets running 20–200 trucks"),
+  F("benefits","Three things it does for them (one per line)","area","Every empty mile, on one screen, updated overnight\nRoutes that fill the return leg without a dispatcher rebuilding them by hand\nSetup in two days, using the spreadsheets you already have"),
+  F("proof","Proof (one per line)","area","61 fleets · 4,200 trucks · 18% fewer empty miles at Halloran Transport"),
+  F("objections","What makes them hesitate (one per line)","area","We tried a TMS and it took six months\nOur dispatcher won't use it\nWe're too small for this kind of software"),
+  F("cta","The one action you want","text","Book a 20-minute demo with your own route data")
+],
+doc:function(p,f){
+  var who=S(f.who)||p.who;
+  var bens=list(f.benefits,["the first thing it does for them","the second","the third"]);
+  var benBody=bens.map(function(b,i){
+    var parts=b.split("—").map(function(s){return s.trim();});
+    return "**"+(parts[0]||b)+"**\n\n"+(parts[1]||"One sentence underneath, saying what it means on a normal Tuesday.");
+  }).join("\n\n");
+  var obj=list(f.objections,["the hesitation you hear most"]).map(function(o){
+    return "**\""+o+"\"**\n\n[Answer it in two sentences. Use a real customer's outcome, not a reassurance.]";
+  }).join("\n\n");
+  return "# Homepage copy — "+p.co+"\n"+
+  "Draft "+today()+" · Voice: "+p.v.tone+"\n\n"+
+  "## Hero\n"+
+  "### Headline\n"+B(f.promise,"the promise in plain words")+"\n\n"+
+  "### Subhead\n"+p.co+" is "+p.what+", built for "+who+".\n\n"+
+  "### Button\n"+B(f.cta,"the one action")+"\n\n"+
+  "### Under the button\n"+"No card, no sales call first. "+"[Swap for whatever is actually true.]\n\n"+
+  "## Proof strip — right under the hero\n"+bul(f.proof,["numbers or names that make it credible"])+"\n\n"+
+  "## What it does\n"+benBody+"\n\n"+
+  "## The objections section\n"+
+  "Say these out loud before they do. A homepage that ducks the obvious worry reads as a homepage with something to hide.\n\n"+
+  obj+"\n\n"+
+  "## Closing block\n"+
+  "### Headline\n"+B(f.promise,"the promise in plain words")+"\n\n"+
+  "### Button\n"+B(f.cta,"the one action")+"\n\n"+
+  "---\n\n"+
+  "## Notes for whoever builds this\n"+
+  "- The headline has one job: a "+who.split(",")[0]+" reads it and knows whether this is for them\n"+
+  "- Every claim on the page traces to the positioning page or comes off\n"+
+  "- One call to action, repeated. Two calls to action is zero";
+}},
+
+{id:"emails", name:"Customer email", desc:"A short email with a subject line worth opening, one idea, and one ask — plus the follow-up.",
+fields:[
+  F("kind","What kind of email","sel","",[["Announcement","Announcement"],["Onboarding nudge","Onboarding nudge"],["Feature launch","Feature launch"],["Win-back","Win-back"],["Renewal","Renewal"],["Newsletter","Newsletter"]]),
+  F("to","Who it goes to","text","the 340 ops managers who've logged in this month"),
+  F("point","The one thing to say","text","Empty-mile reporting is live — it's on your dashboard now, nothing to turn on"),
+  F("why","Why they should care","text","Most fleets find 20% of their mileage is running empty and had no way to see it"),
+  F("ask","The one action you want","text","Open your dashboard and look at last week's number"),
+  F("detail","Supporting details (one per line)","area","Updates overnight, so Monday's number covers the full week\nExportable to CSV for your board pack")
+],
+doc:function(p,f){
+  var point=B(f.point,"the one thing to say");
+  return "# "+B(f.kind,"email type")+" email — "+p.co+"\n"+
+  "To: "+B(f.to,"the list")+" · Voice: "+p.v.tone+"\n\n"+
+  "## Subject lines — pick one, test two\n"+
+  "1. "+point.split(",")[0]+"\n"+
+  "2. "+"A number you probably can't see today\n"+
+  "3. "+"[Their company] — "+lower(point.split("—")[0].trim())+"\n\n"+
+  "**Preview text:** "+B(f.why,"why they should care")+"\n\n"+
+  "---\n\n"+
+  "## The email\n\n"+
+  p.v.hi("[First name]")+"\n\n"+
+  point+".\n\n"+
+  B(f.why,"why they should care")+"\n\n"+
+  bul(f.detail,["the detail that answers their first question"])+"\n\n"+
+  "**"+B(f.ask,"the one action")+"**\n\n"+
+  p.v.bye+"\n"+p.me+", "+p.role+" at "+p.co+"\n\n"+
+  "---\n\n"+
+  "## Follow-up, four days later, to non-openers only\n\n"+
+  "**Subject:** Re: "+point.split(",")[0]+"\n\n"+
+  p.v.hi("[First name]")+"\n\n"+
+  "Sending this once more in case it got buried. "+point+".\n\n"+
+  B(f.ask,"the one action")+" — it takes about a minute.\n\n"+
+  p.v.bye+"\n"+p.me+"\n\n"+
+  "---\n\n"+
+  "## Before you send\n"+
+  "- Read it on a phone. If it needs scrolling twice, cut a paragraph\n"+
+  "- One link. Every extra link costs you clicks on the one that matters\n"+
+  "- Send from a person's address, not noreply@";
+}},
+
+{id:"ads", name:"Ad set", desc:"Ad copy in the sizes the platforms actually want, built around one claim, with the targeting written down.",
+fields:[
+  F("platform","Platform","sel","",[["LinkedIn","LinkedIn"],["Google Search","Google Search"],["Meta","Meta"],["X","X"],["Industry newsletter","Industry newsletter"]]),
+  F("claim","The one claim","text","See every empty mile your fleet runs"),
+  F("target","Who you're targeting","text","Ops and fleet managers, US, companies of 50–500 people in trucking and logistics"),
+  F("hook","Hooks to try (one per line)","area","28% of your mileage is empty. Which 28%?\nYour dispatcher knows. Your P&L doesn't.\nTwo days to set up. We've heard the six-month story too."),
+  F("cta","Call to action","text","Book a 20-minute demo"),
+  F("budget","Budget and run time","text","$3,000 over four weeks")
+],
+doc:function(p,f){
+  var hooks=list(f.hook,["the hook that stops the scroll","a second angle","a third angle"]);
+  var claim=B(f.claim,"the one claim");
+  var variants=hooks.map(function(h,i){
+    return "### Variant "+String.fromCharCode(65+i)+"\n"+
+    "**Hook:** "+h+"\n\n"+
+    "**Body:** "+claim+". "+p.co+" is "+p.what+", built for "+p.who+".\n\n"+
+    "**Button:** "+B(f.cta,"call to action")+"\n";
+  }).join("\n");
+  return "# "+B(f.platform,"platform")+" ad set — "+p.co+"\n"+
+  B(f.budget,"budget and run time")+" · Built "+today()+"\n\n"+
+  "## The claim\n"+claim+"\n\n"+
+  "All three variants below say the same thing differently. Changing the claim between variants means you learn nothing.\n\n"+
+  "## Targeting\n"+B(f.target,"who you're targeting")+"\n\n"+
+  "## Variants\n"+variants+"\n"+
+  "## Short forms\n"+
+  "- **Headline, 30 characters:** "+claim.slice(0,30)+"\n"+
+  "- **Headline, 40 characters:** "+claim.slice(0,40)+"\n"+
+  "- **Description, 90 characters:** "+(p.co+" — "+p.what).slice(0,90)+"\n\n"+
+  "## Landing page\n"+
+  "Send clicks to a page whose headline repeats the hook word for word. "+
+  "A hook that doesn't reappear on the page reads as a bait and switch, and the bounce rate says so.\n\n"+
+  "## How you'll know it worked\n"+
+  "- Judge on cost per booked demo, not clicks or impressions\n"+
+  "- Give each variant at least 1,000 impressions before killing it\n"+
+  "- Kill the two losers at the end of week one and put the budget on the winner";
+}},
+
+{id:"press", name:"Press announcement", desc:"A release built the way editors read them: news in the first line, a quote worth quoting, and the boilerplate at the bottom.",
+fields:[
+  F("news","The news, in one sentence","text","Meridian Freight raised $9M to bring route optimization to mid-size fleets"),
+  F("why","Why it matters to someone outside the company","text","Regional fleets run 28% of their miles empty and enterprise software has priced them out of fixing it"),
+  F("detail","Supporting facts (one per line)","area","Led by Corridor Ventures, with participation from existing investors\n61 fleets and 4,200 trucks on the platform, up from 900 a year ago\nHiring 12 people across engineering and customer success"),
+  F("quote","Your quote — what you actually want to say","text","Every fleet under 200 trucks has been told this software isn't for them. It is now."),
+  F("quote2","A second quote, and who from","text","Corridor Ventures partner Lena Cho: \"They've built the first routing product a 40-truck fleet can actually run.\""),
+  F("date","Dateline","text","Chicago — September 30, 2026"),
+  F("contact","Press contact","text","press@meridianfreight.com")
+],
+doc:function(p,f){
+  return "# "+B(f.news,"the news in one sentence")+"\n\n"+
+  "**FOR IMMEDIATE RELEASE**  \n"+B(f.date,"city — date")+"\n\n"+
+  B(f.news,"the news in one sentence")+".\n\n"+
+  B(f.why,"why it matters to an outsider")+"\n\n"+
+  bul(f.detail,["a supporting fact a reporter could check"])+"\n\n"+
+  "\""+B(f.quote,"your quote")+"\" said "+p.me+", "+p.role+" of "+p.co+".\n\n"+
+  B(f.quote2,"a second quote and who it's from")+"\n\n"+
+  p.co+" builds "+p.what+" for "+p.who+". The company is "+p.size+", based in "+p.loc+".\n\n"+
+  "---\n\n"+
+  "## About "+p.co+"\n"+
+  p.co+" builds "+p.what+". Founded for "+p.who+", the company "+p.proof+". More at "+p.site+".\n\n"+
+  "## Press contact\n"+B(f.contact,"press contact")+"\n\n"+
+  "---\n\n"+
+  "## Notes before you send this\n"+
+  "- A reporter decides in the first line. If the news isn't there, the release is a press page update, not a story\n"+
+  "- Cut every adjective you can't source. \"Leading\" and \"innovative\" are read as noise\n"+
+  "- Pitch it as three sentences in the body of an email. Nobody opens the attachment";
+}}
+
+]},
+
+{
+code:"SOC", name:"Social media",
+jobs:[
+
+{id:"calendar", name:"7-day content calendar", desc:"A week of posts with the platform, the angle, and the actual first line written for each day.",
+fields:[
+  F("start","Week starting","text","Monday, September 29"),
+  F("theme","This week's theme","text","Empty miles — the number nobody measures"),
+  F("platforms","Platforms (one per line)","area","LinkedIn — every weekday\nInstagram — Tuesday and Friday\nX — three times"),
+  F("ideas","Ideas you already have (one per line)","area","The benchmark chart from the report\nHalloran's before-and-after\nWhat a dispatcher's morning actually looks like"),
+  F("cta","What you want people to do","text","Download the empty-miles benchmark report")
+],
+doc:function(p,f){
+  var ideas=list(f.ideas,["your first idea","a second idea","a third idea"]);
+  var days=[
+    ["Monday","Set up the week","Open with the idea, not the product. A number or a claim your audience will argue with."],
+    ["Tuesday","Teach something","The most useful thing you know that "+p.who+" mostly don't. Give it away."],
+    ["Wednesday","Show proof","A customer result, a screenshot, a before and after. Specific beats impressive."],
+    ["Thursday","Show the work","How something here actually gets made or decided. People follow companies they can see inside."],
+    ["Friday","Take a position","Something you believe that a competitor wouldn't say. Politely. Once."],
+    ["Saturday","Light","A photo, a small human thing. Nothing to click."],
+    ["Sunday","Rest or resurface","Nothing, or repost the week's best with a new first line."]
+  ];
+  var body=days.map(function(d,i){
+    var idea=ideas[i%ideas.length];
+    return "### "+d[0]+" — "+d[1]+"\n"+
+    "**Angle:** "+d[2]+"\n\n"+
+    "**Use:** "+idea+"\n\n"+
+    "**First line:** [Write it now — the first line is 80% of the post]\n";
+  }).join("\n");
+  return "# Content week of "+B(f.start,"week starting")+"\n"+
+  p.co+" · Theme: "+B(f.theme,"this week's theme")+"\n\n"+
+  "## Where we're posting\n"+bul(f.platforms,["platform and how often"])+"\n\n"+
+  "## What we want back\n"+B(f.cta,"the action you want")+" — asked for directly twice this week, no more.\n\n"+
+  "## The week\n"+body+"\n"+
+  "## Rules for the week\n"+
+  "- One theme all week. Repetition is how anyone remembers anything\n"+
+  "- Write Monday to Wednesday on Sunday, so a busy Tuesday can't eat the plan\n"+
+  "- Reply to every comment in the first two hours — that's the whole trick\n"+
+  "- If a post takes off, do not move on. Post the sequel the next day";
+}},
+
+{id:"linkedin", name:"LinkedIn post", desc:"Three drafts of the same idea in different shapes, with the first line doing the work.",
+fields:[
+  F("idea","The idea","text","Most fleets can't tell you what percentage of their miles run empty"),
+  F("evidence","What backs it up (one per line)","area","We measured 60 fleets — the median was 28%\nHalloran got theirs to 23% in a quarter by changing one thing"),
+  F("lesson","What you want them to take away","text","You can't fix a number nobody reports"),
+  F("cta","Ask at the end","text","If you run a fleet and want your own number, reply and I'll send the benchmark")
+],
+doc:function(p,f){
+  var idea=B(f.idea,"the idea"),ev=list(f.evidence,["the number or example that proves it"]);
+  return "# LinkedIn — three drafts\n"+
+  p.co+" · Voice: "+p.v.tone+" · "+today()+"\n\n"+
+  "## Draft 1 — the number\n\n"+
+  ev[0].split("—")[0].trim()+".\n\n"+
+  idea+".\n\n"+
+  ev.slice(1).map(function(e){return e;}).join("\n\n")+"\n\n"+
+  B(f.lesson,"the takeaway")+"\n\n"+
+  B(f.cta,"the ask")+"\n\n"+
+  "---\n\n"+
+  "## Draft 2 — the story\n\n"+
+  "[One specific moment: a customer call, a room, a thing someone said.]\n\n"+
+  "That's when it landed for me: "+lower(idea)+".\n\n"+
+  bul(f.evidence,["the evidence"])+"\n\n"+
+  B(f.lesson,"the takeaway")+"\n\n"+
+  B(f.cta,"the ask")+"\n\n"+
+  "---\n\n"+
+  "## Draft 3 — the contrarian one\n\n"+
+  "Everyone in "+p.industry+" says [the received wisdom]. I don't think that's the problem.\n\n"+
+  idea+".\n\n"+
+  bul(f.evidence,["the evidence"])+"\n\n"+
+  B(f.lesson,"the takeaway")+"\n\n"+
+  B(f.cta,"the ask")+"\n\n"+
+  "---\n\n"+
+  "## Before posting\n"+
+  "- The first two lines are all anyone sees before \"see more\". Make them a complete thought\n"+
+  "- One line per paragraph. Walls of text die on this platform\n"+
+  "- No hashtag soup. Two, at most, and only if they're real\n"+
+  "- Put any link in the first comment and say so";
+}},
+
+{id:"instagram", name:"Instagram captions", desc:"Five captions for one post, from short to long, plus what the image should be.",
+fields:[
+  F("subject","What the post is about","text","The whiteboard where we sketched the empty-miles dashboard"),
+  F("shot","What's in the shot","text","A messy whiteboard, half-erased, coffee cups"),
+  F("point","The point of it","text","The best feature we shipped this year started as a bad drawing"),
+  F("cta","What you want them to do","text","Follow along — we post what we're building")
+],
+doc:function(p,f){
+  var subj=B(f.subject,"what the post is about"),point=B(f.point,"the point");
+  return "# Instagram — "+subj+"\n"+
+  p.co+" · Voice: "+p.v.tone+"\n\n"+
+  "## The shot\n"+B(f.shot,"what's in the frame")+"\n\n"+
+  "Shoot it in daylight, don't straighten it, don't filter it into oblivion. The unstaged one always outperforms.\n\n"+
+  "## Captions\n"+
+  "### 1. Four words\n"+point.split(" ").slice(0,4).join(" ")+".\n\n"+
+  "### 2. One line\n"+point+".\n\n"+
+  "### 3. Two lines with a turn\n"+
+  subj+".\n\n"+point+"\n\n"+
+  "### 4. The short story\n"+
+  "[One sentence about the moment this was taken.]\n\n"+
+  point+"\n\n"+
+  "We build "+p.what+" — this is what that looks like on a Wednesday.\n\n"+
+  "### 5. The long one\n"+
+  "[Open with the thing that surprised you.]\n\n"+
+  subj+". "+point+"\n\n"+
+  "[Two or three lines of what happened next.]\n\n"+
+  B(f.cta,"what you want them to do")+"\n\n"+
+  "## Alt text\n"+B(f.shot,"describe the image for someone who can't see it")+"\n\n"+
+  "## Hashtags — five, not thirty\n"+
+  "#"+p.industry.replace(/[^A-Za-z0-9]/g,"").toLowerCase()+" #[yourcity] #[yourniche] #buildinpublic #smallteam\n\n"+
+  "## First comment\n"+
+  "Ask something answerable in four words. \"Anyone else start on a whiteboard?\" beats \"What do you think?\"";
+}},
+
+{id:"thread", name:"X thread", desc:"A thread that earns each scroll: a hook that stands alone, one idea per post, and an ending that isn't a plug.",
+fields:[
+  F("idea","The thread's one idea","text","We measured empty miles across 60 fleets. The median was 28%."),
+  F("points","The points, in order (one per line)","area","Nobody tracks it because no report shows it\nDispatchers know it's happening but can't quantify it\nThe fix isn't better routing software, it's a number on a screen every morning\nHalloran went 28% to 23% in a quarter — that's $340k a year"),
+  F("close","How you want to land it","text","If you run a fleet, you can get your own number in about a day"),
+  F("link","Link, if any","text","meridianfreight.com/benchmark")
+],
+doc:function(p,f){
+  var pts=list(f.points,["the first point","the second point","the third point"]);
+  var body=pts.map(function(t,i){
+    return "**"+(i+2)+"/**\n\n"+t+"\n";
+  }).join("\n");
+  return "# X thread — "+p.co+"\n"+
+  "Voice: "+p.v.tone+" · "+(pts.length+2)+" posts\n\n"+
+  "## The thread\n\n"+
+  "**1/ — the hook**\n\n"+
+  B(f.idea,"the thread's one idea")+"\n\n"+
+  "Here's what we found.\n\n"+
+  body+"\n"+
+  "**"+(pts.length+2)+"/ — the close**\n\n"+
+  B(f.close,"how you want to land it")+"\n\n"+
+  (S(f.link)?S(f.link)+"\n\n":"")+
+  "---\n\n"+
+  "## Notes\n"+
+  "- Post 1 has to work with nothing after it. If it needs the thread to make sense, rewrite it\n"+
+  "- One idea per post. Two ideas in one post loses both\n"+
+  "- Numbers travel further than adjectives\n"+
+  "- Reply to your own thread for an hour. The replies are where it spreads\n"+
+  "- Don't end on a follow-me. End on the point, and let the link sit quietly";
+}},
+
+{id:"reel", name:"Reel script", desc:"A 30-second script with the on-screen text, what's happening in shot, and the words out loud — timed.",
+fields:[
+  F("topic","What it's about","text","How to find your fleet's empty miles in one morning"),
+  F("hook","The first three seconds","text","28% of your trucks' mileage is empty. Here's how to find out which."),
+  F("beats","The beats (one per line)","area","Pull last month's route exports\nMatch loaded miles against total miles per truck\nSort by the worst five — that's where the money is"),
+  F("close","The ending","text","That's a morning's work and usually six figures a year"),
+  F("cta","On-screen call to action","text","Full method in the benchmark report")
+],
+doc:function(p,f){
+  var beats=list(f.beats,["the first step","the second step","the third step"]);
+  var per=Math.max(3,Math.floor(22/beats.length));
+  var t=5;
+  var body=beats.map(function(b,i){
+    var start=t; t+=per;
+    return "### "+start+"s–"+t+"s — step "+(i+1)+"\n"+
+    "**On screen:** "+b.split("—")[0].trim()+"\n\n"+
+    "**In shot:** [What the camera is looking at — a screen, your hands, a whiteboard]\n\n"+
+    "**Say:** \""+b+".\"\n";
+  }).join("\n");
+  return "# Reel script — "+B(f.topic,"what it's about")+"\n"+
+  p.co+" · Roughly 30 seconds · Vertical\n\n"+
+  "## 0s–3s — the hook\n"+
+  "**On screen, big:** "+B(f.hook,"the first three seconds").split(".")[0]+"\n\n"+
+  "**Say:** \""+B(f.hook,"the first three seconds")+"\"\n\n"+
+  "No logo, no intro, no \"hey guys\". The first frame is the whole gamble.\n\n"+
+  "## 3s–5s — the promise\n"+
+  "**Say:** \"Three steps, takes a morning.\"\n\n"+
+  body+"\n"+
+  "## "+t+"s–30s — the close\n"+
+  "**Say:** \""+B(f.close,"the ending")+"\"\n\n"+
+  "**On screen:** "+B(f.cta,"on-screen call to action")+"\n\n"+
+  "## Production notes\n"+
+  "- Caption everything. Most people watch this on mute\n"+
+  "- Cut on every sentence. Any still frame over two seconds loses people\n"+
+  "- Shoot vertical, film in daylight, put the phone on something solid\n"+
+  "- Put the payoff first if the hook underperforms — reshoot the first three seconds before you reshoot anything else";
+}},
+
+{id:"replies", name:"Review replies", desc:"Ready replies for a good review, a bad one, and an unfair one — public, short, and human.",
+fields:[
+  F("where","Where the review is","text","G2"),
+  F("good","What the happy review said","text","Setup took two days and support actually answers"),
+  F("bad","What the critical review said","text","Reporting is thin and the mobile app is slow"),
+  F("badtruth","What's true in the criticism","text","The mobile app is slow — we know, it's being rebuilt"),
+  F("fix","What you're doing about it","text","New mobile app in beta in November"),
+  F("unfair","The unfair or mistaken one","text","Says we charge hidden fees — they were billed for extra trucks they added mid-month"),
+  F("who","Who signs the replies","text","")
+],
+doc:function(p,f){
+  var signer=S(f.who)||p.me;
+  return "# Review replies — "+B(f.where,"where the review is")+"\n"+
+  p.co+" · Voice: "+p.v.tone+"\n\n"+
+  "## To the good review\n"+
+  "> "+B(f.good,"what the happy review said")+"\n\n"+
+  "**Reply:**\n\n"+
+  "Thank you — genuinely. "+first(f.good,"the thing they praised")+" is the part we've worked hardest on, "+
+  "so it's good to hear it landed. If there's anything you'd change, my inbox is open.\n\n"+
+  "— "+signer+", "+p.co+"\n\n"+
+  "Short. No marketing. Never end a happy review with a pitch.\n\n"+
+  "---\n\n"+
+  "## To the critical review\n"+
+  "> "+B(f.bad,"what the critical review said")+"\n\n"+
+  "**Reply:**\n\n"+
+  "You're right about "+lower(B(f.badtruth,"what's true in the criticism"))+", and I'm not going to argue with it. "+
+  "Here's where it stands: "+B(f.fix,"what you're doing about it")+". "+
+  "If you want to be in that group early, write to "+p.site+" and I'll add you.\n\n"+
+  "— "+signer+", "+p.co+"\n\n"+
+  "Concede the true part in the first sentence. Every reader can tell the difference between an apology and a defence.\n\n"+
+  "---\n\n"+
+  "## To the unfair or mistaken one\n"+
+  "> "+B(f.unfair,"the unfair or mistaken review")+"\n\n"+
+  "**Reply:**\n\n"+
+  "Thanks for flagging this — I want to clear it up, because it matters to us. "+
+  "[State the fact in one sentence, no more.] "+
+  "If that isn't what happened on your account, write to "+p.site+" and I'll look at it myself today.\n\n"+
+  "— "+signer+", "+p.co+"\n\n"+
+  "One correction, one offer, then stop. You're not writing to the reviewer — you're writing to the next 500 people who read it.\n\n"+
+  "---\n\n"+
+  "## House rules\n"+
+  "- Reply within 48 hours, always, including the good ones\n"+
+  "- A real name signs every reply. \"The team\" reads as nobody\n"+
+  "- Never mention a discount or a refund in public\n"+
+  "- If you're annoyed, write it, then send it tomorrow";
+}}
+
+]}
+];
+
+/* ================= markdown-ish renderer ================= */
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function inline(s){
+  return esc(s)
+    .replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>")
+    .replace(/\[([^\][\n]+)\]/g,'<span class="mk">[$1]</span>');
+}
+function render(md){
+  var out=[],para=[],ul=[],ol=[],bq=[];
+  function flushPara(){if(para.length){out.push("<p>"+para.join("<br>")+"</p>");para=[];}}
+  function flushUl(){if(ul.length){out.push("<ul>"+ul.map(function(x){return "<li>"+x+"</li>";}).join("")+"</ul>");ul=[];}}
+  function flushOl(){if(ol.length){out.push("<ol>"+ol.map(function(x){return "<li>"+x+"</li>";}).join("")+"</ol>");ol=[];}}
+  function flushBq(){if(bq.length){out.push("<blockquote>"+bq.map(function(x){return "<p>"+x+"</p>";}).join("")+"</blockquote>");bq=[];}}
+  function flushAll(){flushPara();flushUl();flushOl();flushBq();}
+  md.split("\n").forEach(function(raw){
+    var line=raw.replace(/\s+$/,""), br=/ {2,}$/.test(raw);
+    if(!line.trim()){flushAll();return;}
+    var m;
+    if((m=line.match(/^###\s+(.*)$/))){flushAll();out.push("<h3>"+inline(m[1])+"</h3>");return;}
+    if((m=line.match(/^##\s+(.*)$/))){flushAll();out.push("<h2>"+inline(m[1])+"</h2>");return;}
+    if((m=line.match(/^#\s+(.*)$/))){flushAll();out.push("<h1>"+inline(m[1])+"</h1>");return;}
+    if(/^---+$/.test(line)){flushAll();out.push("<hr>");return;}
+    if((m=line.match(/^>\s?(.*)$/))){flushPara();flushUl();flushOl();bq.push(inline(m[1]));return;}
+    if((m=line.match(/^-\s+\[\s?\]\s+(.*)$/))){flushPara();flushOl();flushBq();ul.push("☐ "+inline(m[1]));return;}
+    if((m=line.match(/^-\s+(.*)$/))){flushPara();flushOl();flushBq();ul.push(inline(m[1]));return;}
+    if((m=line.match(/^\d+\.\s+(.*)$/))){flushPara();flushUl();flushBq();ol.push(inline(m[1]));return;}
+    flushUl();flushOl();flushBq();
+    para.push(inline(line)+(br?"":""));
+  });
+  flushAll();
+  return out.join("\n");
+}
+function countBlanks(md){
+  var m=md.replace(/-\s+\[\s?\]/g,"").match(/\[[^\][\n]+\]/g);
+  return m?m.length:0;
+}
+
+/* ================= app ================= */
+var $=function(id){return document.getElementById(id);};
+var plate=load(KEY_PLATE,{}), briefs=load(KEY_BRIEF,{}), last=load(KEY_LAST,{s:0,j:0});
+var current={s:0,j:0}, lastDoc="";
+
+function jobAt(s,j){
+  var st=STATIONS[s]; if(!st)return null;
+  return st.jobs[j]?{st:st,job:st.jobs[j]}:null;
+}
+
+/* ---- plate ---- */
+function buildPlate(){
+  var g=$("plateGrid"); g.innerHTML="";
+  PLATE_FIELDS.forEach(function(fd){
+    var wrap=document.createElement("div");
+    wrap.className="field"+(fd.full?" full":"");
+    var id="plate_"+fd.k;
+    var lab=document.createElement("label");
+    lab.className="lab"; lab.setAttribute("for",id); lab.textContent=fd.l;
+    var el;
+    if(fd.t==="sel"){
+      el=document.createElement("select");
+      fd.opts.forEach(function(o){
+        var op=document.createElement("option"); op.value=o[0]; op.textContent=o[1]; el.appendChild(op);
+      });
+      el.value=S(plate[fd.k])||"plain";
+    }else{
+      el=document.createElement("input");
+      el.type="text"; el.placeholder=fd.ph||""; el.value=S(plate[fd.k]);
+    }
+    el.className="in"; el.id=id;
+    el.addEventListener("input",function(){plate[fd.k]=el.value;});
+    el.addEventListener("change",function(){plate[fd.k]=el.value;updateChip();});
+    wrap.appendChild(lab); wrap.appendChild(el); g.appendChild(wrap);
+  });
+}
+function updateChip(){
+  var n=plateFilled(plate), dot=$("plateDot"), who=$("plateWho");
+  if(n===0){
+    dot.className="dot empty";
+    who.textContent="No company plate yet";
+  }else{
+    dot.className="dot";
+    var v=VOICE[S(plate.voice)||"plain"]||VOICE.plain;
+    var bits=[];
+    bits.push(S(plate.co)||"[Company name]");
+    if(S(plate.who))bits.push("for "+S(plate.who));
+    who.innerHTML="<b>"+esc(bits[0])+"</b>"+(bits[1]?" "+esc(bits[1]):"")+" · "+esc(v.tone);
+  }
+  renderNudge();
+}
+function renderNudge(){
+  var slot=$("nudgeSlot");
+  if(plateFilled(plate)>=3){slot.innerHTML="";return;}
+  slot.innerHTML='<div class="nudge"><div><b>Fill in the company plate first.</b> '+
+    'Without it every document comes back full of brackets — the name, the audience and the voice all come from there. '+
+    '<button type="button" id="nudgeOpen">Open the plate</button></div></div>';
+  $("nudgeOpen").addEventListener("click",function(){openDrawer(true);});
+}
+function openDrawer(open,quiet){
+  var d=$("drawer"), b=$("plateBtn");
+  var willOpen = (open===undefined) ? !d.classList.contains("open") : open;
+  d.classList.toggle("open",willOpen);
+  b.setAttribute("aria-expanded",willOpen?"true":"false");
+  if(willOpen&&!quiet){
+    var f=$("plate_co"); if(f)f.focus();
+    d.scrollIntoView({block:"nearest",behavior:"smooth"});
+  }
+}
+
+/* ---- rail ---- */
+function buildRail(){
+  var rail=$("rail"); rail.innerHTML="";
+  STATIONS.forEach(function(st,si){
+    var sec=document.createElement("div"); sec.className="station";
+    var head=document.createElement("div"); head.className="station-head";
+    head.innerHTML='<span class="station-code">'+esc(st.code)+'</span><span class="station-name">'+esc(st.name)+'</span>';
+    sec.appendChild(head);
+    var jobs=document.createElement("div"); jobs.className="station-jobs";
+    jobs.style.display="flex"; jobs.style.flexDirection=window.innerWidth>880?"column":"";
+    st.jobs.forEach(function(job,ji){
+      var b=document.createElement("button");
+      b.type="button"; b.className="job"; b.textContent=job.name;
+      b.dataset.s=si; b.dataset.j=ji;
+      b.addEventListener("click",function(){selectJob(si,ji,true);});
+      jobs.appendChild(b);
+    });
+    sec.appendChild(jobs); rail.appendChild(sec);
+  });
+}
+function markRail(){
+  Array.prototype.forEach.call(document.querySelectorAll(".job"),function(b){
+    var on=(+b.dataset.s===current.s && +b.dataset.j===current.j);
+    if(on)b.setAttribute("aria-current","true"); else b.removeAttribute("aria-current");
+  });
+}
+
+/* ---- brief ---- */
+function briefKey(){var r=jobAt(current.s,current.j);return r?r.st.code+":"+r.job.id:"x";}
+function buildBrief(){
+  var r=jobAt(current.s,current.j); if(!r)return;
+  $("jobEyebrow").textContent=r.st.name;
+  $("jobTitle").textContent=r.job.name;
+  $("jobDesc").textContent=r.job.desc;
+  var saved=briefs[briefKey()]||{};
+  var g=$("briefGrid"); g.innerHTML="";
+  r.job.fields.forEach(function(fd){
+    var wrap=document.createElement("div");
+    wrap.className="field"+(fd.t==="area"?" full":"");
+    var id="f_"+fd.k;
+    var lab=document.createElement("label");
+    lab.className="lab"; lab.setAttribute("for",id); lab.textContent=fd.l;
+    var el;
+    if(fd.t==="area"){
+      el=document.createElement("textarea"); el.rows=Math.min(6,Math.max(3,(fd.ph||"").split("\n").length+1));
+      el.placeholder=fd.ph||"";
+    }else if(fd.t==="sel"){
+      el=document.createElement("select");
+      (fd.opts||[]).forEach(function(o){
+        var op=document.createElement("option"); op.value=o[0]; op.textContent=o[1]; el.appendChild(op);
+      });
+    }else{
+      el=document.createElement("input"); el.type="text"; el.placeholder=fd.ph||"";
+    }
+    el.className="in"; el.id=id; el.dataset.k=fd.k;
+    if(saved[fd.k]!==undefined)el.value=saved[fd.k];
+    else if(fd.t==="sel"&&fd.opts&&fd.opts.length)el.value=fd.opts[0][0];
+    wrap.appendChild(lab); wrap.appendChild(el); g.appendChild(wrap);
+  });
+}
+function readBrief(){
+  var vals={};
+  Array.prototype.forEach.call($("briefGrid").querySelectorAll("[data-k]"),function(el){
+    vals[el.dataset.k]=el.value;
+  });
+  return vals;
+}
+
+function selectJob(si,ji,scroll){
+  current={s:si,j:ji};
+  save(KEY_LAST,{s:si,j:ji});
+  markRail(); buildBrief();
+  $("sheetWrap").classList.remove("show");
+  if(scroll&&window.innerWidth<=880){
+    document.querySelector(".work").scrollIntoView({block:"start",behavior:"smooth"});
+  }
+}
+
+/* ---- run ---- */
+function run(){
+  var r=jobAt(current.s,current.j); if(!r)return;
+  var vals=readBrief();
+  briefs[briefKey()]=vals; save(KEY_BRIEF,briefs);
+  save(KEY_PLATE,plate);
+  var md;
+  try{ md=r.job.doc(plateView(plate),vals); }
+  catch(err){ md="# Something went wrong writing this\n\nThe "+r.job.name+" template hit an error: "+String(err&&err.message||err)+". Change one field and try again."; }
+  lastDoc=md;
+  $("sheet").innerHTML=render(md);
+  var n=countBlanks(md), bl=$("blanks");
+  bl.textContent = n===0 ? "Nothing left to fill in" : (n+" blank"+(n===1?"":"s")+" to fill in");
+  bl.className = "blanks"+(n===0?" none":"");
+  $("sheetMeta").textContent=r.st.code+" · "+r.job.name+" · "+today();
+  $("copyBtn").textContent="Copy document";
+  $("sheetWrap").classList.add("show");
+  $("sheetWrap").scrollIntoView({block:"start",behavior:"smooth"});
+}
+
+function copyDoc(){
+  var btn=$("copyBtn");
+  function done(ok){btn.textContent=ok?"Copied":"Press Ctrl+C";setTimeout(function(){btn.textContent="Copy document";},1800);}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(lastDoc).then(function(){done(true);},function(){fallback();});
+  }else fallback();
+  function fallback(){
+    var ta=document.createElement("textarea");
+    ta.value=lastDoc; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.select();
+    var ok=false; try{ok=document.execCommand("copy");}catch(e){}
+    document.body.removeChild(ta); done(ok);
+  }
+}
+
+/* ---- wire up ---- */
+buildPlate(); buildRail(); updateChip();
+if(jobAt(last.s,last.j))current={s:last.s,j:last.j};
+selectJob(current.s,current.j,false);
+
+$("plateBtn").addEventListener("click",function(){openDrawer();});
+$("plateSave").addEventListener("click",function(){
+  PLATE_FIELDS.forEach(function(fd){var el=$("plate_"+fd.k); if(el)plate[fd.k]=el.value;});
+  save(KEY_PLATE,plate); updateChip();
+  var s=$("plateSaved"); s.classList.add("show"); setTimeout(function(){s.classList.remove("show");},1600);
+});
+$("plateClear").addEventListener("click",function(){
+  plate={}; save(KEY_PLATE,plate); buildPlate(); updateChip();
+});
+$("runBtn").addEventListener("click",run);
+$("clearBtn").addEventListener("click",function(){
+  briefs[briefKey()]={}; save(KEY_BRIEF,briefs); buildBrief();
+  $("sheetWrap").classList.remove("show");
+});
+$("copyBtn").addEventListener("click",copyDoc);
+document.addEventListener("keydown",function(e){
+  if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){e.preventDefault();run();}
+});
+if(plateFilled(plate)===0)openDrawer(true,true);
+
+})();
+</script>
